@@ -30,6 +30,9 @@ public class SpaceRentFrame extends JFrame {
     private static final Color HIGHLIGHT_YELLOW = new Color(255, 245, 157);
     private static final Color BORDER_COLOR = new Color(220, 220, 220);
 
+    // 팝업 배경색
+    private static final Color POPUP_BG = new Color(255, 250, 205);
+
     // 버튼 색
     private static final Color BTN_OFF_BG = new Color(250, 250, 250);
     private static final Color BTN_ON_BG  = BROWN;
@@ -140,14 +143,11 @@ public class SpaceRentFrame extends JFrame {
         logoLabel.setBounds(30, 20, 300, 40);
         headerPanel.add(logoLabel);
         
-        logoLabel.setCursor(new Cursor(Cursor.HAND_CURSOR)); // 1. 마우스 올리면 손가락 모양으로 변경
-        logoLabel.addMouseListener(new MouseAdapter() {      // 2. 마우스 기능 추가
+        logoLabel.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
+        logoLabel.addMouseListener(new MouseAdapter() {      
             @Override
             public void mouseClicked(MouseEvent e) {
-                // 현재 창 닫기
                 dispose(); 
-                
-                // 메인 화면(MainFrame) 새로 열기
                 new MainFrame(); 
             }
         });
@@ -435,8 +435,9 @@ public class SpaceRentFrame extends JFrame {
         int usedHours = reservationDAO.getUsedHoursForUser(myHakbun, date);
         if (usedHours + selectedTimeCount > 3) {
             showSimplePopup("이용 한도 초과",
-                    "선택하신 날짜에 이미 " + usedHours + "시간을 예약하셨습니다.\n" +
-                    "※하루 최대 3시간 규정");
+                    "선택하신 날짜에 이미 " + usedHours + "시간을\n 예약하셨습니다.\n" +
+                    ""
+                    + "※하루 최대 3시간 규정");
             return;
         }
 
@@ -536,40 +537,66 @@ public class SpaceRentFrame extends JFrame {
 
     private void showSuccessPopup(String space, String date, String timeRange, int totalPeople) {
         JDialog dialog = new JDialog(this, "예약 완료", true);
-        dialog.setSize(420, 300);
+        dialog.setSize(420, 320); 
         dialog.setLocationRelativeTo(this);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0,0,0,0));
 
         JPanel panel = createPopupPanel();
-        dialog.add(panel);
         panel.setLayout(null);
+        dialog.add(panel);
 
-        JLabel label1 = new JLabel("예약 일자 : " + date, SwingConstants.CENTER);
-        label1.setFont(uiFont.deriveFont(15f));
-        label1.setForeground(BROWN);
-        label1.setBounds(20, 40, 380, 25);
-        panel.add(label1);
+        // 텍스트들을 담을 컨테이너 (수직 박스 레이아웃)
+        JPanel contentBox = new JPanel();
+        contentBox.setLayout(new BoxLayout(contentBox, BoxLayout.Y_AXIS));
+        contentBox.setOpaque(false);
+        // 중앙 정렬을 위해 GridBagLayout을 사용하는 부모 패널에 넣기
+        JPanel centerPanel = new JPanel(new GridBagLayout());
+        centerPanel.setOpaque(false);
+        centerPanel.setBounds(20, 30, 380, 180); // 버튼 위쪽 영역 전체 사용
+        centerPanel.add(contentBox);
+        panel.add(centerPanel);
 
-        JLabel labelTime = new JLabel(timeRange, SwingConstants.CENTER);
-        labelTime.setFont(uiFont.deriveFont(15f));
-        labelTime.setForeground(BROWN);
-        labelTime.setBounds(20, 65, 380, 25);
-        panel.add(labelTime);
+        // 항목별 추가 (날짜, 시간, 공간안내)
+        contentBox.add(createCenteredLabel("예약 일자 : " + date, 15f));
+        contentBox.add(Box.createVerticalStrut(8));
+        contentBox.add(createCenteredLabel(timeRange, 15f));
+        contentBox.add(Box.createVerticalStrut(8));
 
-        JLabel label2 = new JLabel("[ " + space + " ], 인원 " + totalPeople + "명 예약되었습니다.",
-                                   SwingConstants.CENTER);
-        label2.setFont(uiFont.deriveFont(15f));
-        label2.setForeground(BROWN);
-        label2.setBounds(20, 115, 380, 20);
-        panel.add(label2);
+        // 긴 텍스트(공간명 등)를 위해 JTextPane 사용
+        String msg = "[ " + space + " ]\n인원 " + totalPeople + "명 예약되었습니다.";
+        JTextPane msgPane = new JTextPane();
+        msgPane.setText(msg);
+        msgPane.setFont(uiFont.deriveFont(16f));
+        msgPane.setForeground(BROWN);
+        msgPane.setOpaque(false);
+        msgPane.setEditable(false);
+        msgPane.setFocusable(false);
+        
+        // 가운데 정렬 스타일 적용
+        StyledDocument doc = msgPane.getStyledDocument();
+        SimpleAttributeSet center = new SimpleAttributeSet();
+        StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
+        doc.setParagraphAttributes(0, doc.getLength(), center, false);
+        
+        msgPane.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contentBox.add(msgPane);
 
         JButton okBtn = createPopupBtn("확인");
-        okBtn.setBounds(135, 200, 150, 50);
+        okBtn.setBounds(135, 230, 150, 50);
         okBtn.addActionListener(e -> dialog.dispose());
         panel.add(okBtn);
 
         dialog.setVisible(true);
+    }
+    
+    private JLabel createCenteredLabel(String text, float fontSize) {
+        JLabel label = new JLabel(text);
+        label.setFont(uiFont.deriveFont(fontSize));
+        label.setForeground(BROWN);
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+        return label;
     }
 
     // 동반인 엔트리
@@ -760,17 +787,27 @@ public class SpaceRentFrame extends JFrame {
         return ampm + " " + display + "시";
     }
 
-    // 팝업 공통
+    // ===============================
+    // 🎨 팝업 공통 패널 & 버튼
+    // ===============================
     private JPanel createPopupPanel() {
-        JPanel panel = new JPanel();
-        panel.setBackground(new Color(255, 250, 205));
-        panel.setBorder(new RoundedBorder(20, BROWN, 2));
-        return panel;
+        return new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(POPUP_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
+                g2.setColor(BROWN);
+                g2.setStroke(new BasicStroke(3));
+                g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 30, 30);
+            }
+        };
     }
 
     private JButton createPopupBtn(String text) {
         JButton btn = new JButton(text);
-        btn.setFont(uiFont.deriveFont(15f));
+        btn.setFont(uiFont.deriveFont(16f));
         btn.setBackground(BROWN);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
@@ -779,7 +816,7 @@ public class SpaceRentFrame extends JFrame {
         return btn;
     }
 
-    // ✅ 간단 팝업 (텍스트 세로로 안 깨지게 수정)
+    // ✅ 간단 팝업 (가로 폭 고정 + 중앙 정렬)
     private void showSimplePopup(String title, String message) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setSize(400, 250);
@@ -787,46 +824,31 @@ public class SpaceRentFrame extends JFrame {
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0,0,0,0));
 
-        JPanel panel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(255, 250, 205));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
-                g2.setColor(new Color(139, 90, 43));
-                g2.setStroke(new BasicStroke(3));
-                g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 30, 30);
-            }
-        };
+        JPanel panel = createPopupPanel();
         panel.setLayout(null);
         dialog.add(panel);
 
-        // 텍스트 영역 폭을 넉넉히 지정
+        // 메시지 텍스트
         JTextPane msgPane = new JTextPane();
         msgPane.setText(message);
         msgPane.setFont(uiFont.deriveFont(18f));
-        msgPane.setForeground(new Color(139, 90, 43));
+        msgPane.setForeground(BROWN);
         msgPane.setOpaque(false);
         msgPane.setEditable(false);
         msgPane.setFocusable(false);
-        msgPane.setBounds(30, 40, 340, 100);   // 🔹 폭을 340으로 고정
-
+        
+        // 텍스트 수평 중앙 정렬
         StyledDocument doc = msgPane.getStyledDocument();
         SimpleAttributeSet center = new SimpleAttributeSet();
         StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
         doc.setParagraphAttributes(0, doc.getLength(), center, false);
 
+        // ✅ 텍스트 영역의 폭을 강제로 넓혀서 세로로 글자가 깨지는 현상 방지
+        msgPane.setBounds(30, 50, 340, 100); 
         panel.add(msgPane);
 
-        JButton okBtn = new JButton("확인");
-        okBtn.setFont(uiFont.deriveFont(16f));
-        okBtn.setBackground(new Color(139, 90, 43));
-        okBtn.setForeground(Color.WHITE);
-        okBtn.setFocusPainted(false);
+        JButton okBtn = createPopupBtn("확인");
         okBtn.setBounds(130, 160, 140, 45);
-        okBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        okBtn.setBorder(BorderFactory.createLineBorder(new Color(139, 90, 43), 2));
         okBtn.addActionListener(e -> dialog.dispose());
         panel.add(okBtn);
 
@@ -841,35 +863,18 @@ public class SpaceRentFrame extends JFrame {
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0,0,0,0));
 
-        JPanel panel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(255, 250, 205));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
-                g2.setColor(new Color(139, 90, 43));
-                g2.setStroke(new BasicStroke(3));
-                g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 30, 30);
-            }
-        };
+        JPanel panel = createPopupPanel();
         panel.setLayout(null);
         dialog.add(panel);
 
         JLabel msgLabel = new JLabel("로그아웃 하시겠습니까?", SwingConstants.CENTER);
         msgLabel.setFont(uiFont.deriveFont(18f));
-        msgLabel.setForeground(new Color(139, 90, 43));
+        msgLabel.setForeground(BROWN);
         msgLabel.setBounds(20, 50, 360, 50);
         panel.add(msgLabel);
 
-        JButton yesBtn = new JButton("네");
-        yesBtn.setFont(uiFont.deriveFont(16f));
-        yesBtn.setBackground(new Color(139, 90, 43));
-        yesBtn.setForeground(Color.WHITE);
-        yesBtn.setFocusPainted(false);
+        JButton yesBtn = createPopupBtn("네");
         yesBtn.setBounds(70, 140, 110, 45);
-        yesBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        yesBtn.setBorder(BorderFactory.createLineBorder(new Color(139, 90, 43), 2));
         yesBtn.addActionListener(e -> {
             dialog.dispose();
             UserManager.logout();
@@ -878,14 +883,8 @@ public class SpaceRentFrame extends JFrame {
         });
         panel.add(yesBtn);
 
-        JButton noBtn = new JButton("아니오");
-        noBtn.setFont(uiFont.deriveFont(16f));
-        noBtn.setBackground(new Color(139, 90, 43));
-        noBtn.setForeground(Color.WHITE);
-        noBtn.setFocusPainted(false);
+        JButton noBtn = createPopupBtn("아니오");
         noBtn.setBounds(210, 140, 110, 45);
-        noBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        noBtn.setBorder(BorderFactory.createLineBorder(new Color(139, 90, 43), 2));
         noBtn.addActionListener(e -> dialog.dispose());
         panel.add(noBtn);
 

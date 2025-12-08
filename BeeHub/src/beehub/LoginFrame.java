@@ -15,8 +15,8 @@ public class LoginFrame extends JFrame {
     // ===============================
     // 🎨 컬러 테마
     // ===============================
-    private static final Color BG_YELLOW = new Color(255, 250, 205); 
-    private static final Color BROWN = new Color(139, 90, 43);
+    private static final Color BG_YELLOW = new Color(255, 255, 210); 
+    private static final Color BROWN = new Color(100, 60, 28);
     private static final Color INPUT_BG = new Color(255, 255, 255);
     private static final Color GRAY = new Color(200, 200, 200);
 

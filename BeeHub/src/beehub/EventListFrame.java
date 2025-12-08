@@ -5,7 +5,7 @@ import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.InputStream;
-import java.time.LocalDateTime;                 // ✅ 추가
+import java.time.LocalDateTime;
 import java.util.List;
 
 import council.EventManager;
@@ -18,8 +18,13 @@ public class EventListFrame extends JFrame {
     private static final Color BG_MAIN = new Color(255, 255, 255);
     private static final Color BROWN = new Color(89, 60, 28);
     private static final Color HIGHLIGHT_YELLOW = new Color(255, 245, 157);
-    private static final Color GREEN_PROGRESS = new Color(180, 230, 180);
-    private static final Color ORANGE_CLOSED = new Color(255, 200, 180);
+    
+    // ✅ 상태별 색상 정의
+    private static final Color GREEN_PROGRESS = new Color(180, 230, 180); // 진행 중, 신청 중
+    private static final Color ORANGE_CLOSED  = new Color(255, 200, 180); // 종료
+    private static final Color GRAY_BEFORE    = new Color(225, 225, 225); // 진행 전, 신청 전 (회색)
+    private static final Color RED_CLOSED     = new Color(255, 160, 160); // 신청 마감 (빨간색)
+    
     private static final Color POPUP_BG = new Color(255, 250, 205);
 
     private static Font uiFont;
@@ -65,7 +70,7 @@ public class EventListFrame extends JFrame {
         getContentPane().setBackground(BG_MAIN);
 
         initUI();
-        loadEvents(); // 초기 로딩 (전체 목록)
+        loadEvents(); 
         setVisible(true);
     }
 
@@ -81,14 +86,11 @@ public class EventListFrame extends JFrame {
         logoLabel.setBounds(30, 20, 300, 40);
         headerPanel.add(logoLabel);
         
-        logoLabel.setCursor(new Cursor(Cursor.HAND_CURSOR)); // 1. 마우스 올리면 손가락 모양으로 변경
-        logoLabel.addMouseListener(new MouseAdapter() {      // 2. 마우스 기능 추가
+        logoLabel.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
+        logoLabel.addMouseListener(new MouseAdapter() {      
             @Override
             public void mouseClicked(MouseEvent e) {
-                // 현재 창 닫기
                 dispose(); 
-                
-                // 메인 화면(MainFrame) 새로 열기
                 new MainFrame(); 
             }
         });
@@ -158,7 +160,6 @@ public class EventListFrame extends JFrame {
         });
         contentPanel.add(councilDropdown);
 
-        // 돋보기 아이콘 (클릭 시 필터 적용)
         JLabel searchIcon = new JLabel("🔍");
         searchIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
         searchIcon.setForeground(BROWN);
@@ -185,22 +186,18 @@ public class EventListFrame extends JFrame {
         contentPanel.add(scrollPane);
     }
 
-    /** 🔹 드롭다운 선택 + 상태(종료/삭제 제외) 기준으로 행사 로드 */
     private void loadEvents() {
         String selectedCouncil = (String) councilDropdown.getSelectedItem();
         if (selectedCouncil == null || selectedCouncil.startsWith("───")) {
             selectedCouncil = "전체";
         }
 
-        // ✅ UI에서 보이는 이름 → DB target_dept 값으로 매핑
-        //    - "총학생회"  → "ALL"
-        //    - 나머지 학과들은 DB에 저장된 이름과 동일하다고 가정
-        String filterTarget = null; // null이면 전체
+        String filterTarget = null; 
         if (!"전체".equals(selectedCouncil)) {
             if ("총학생회".equals(selectedCouncil)) {
-                filterTarget = "ALL";          // 🔥 총학생회는 DB에서 ALL로 저장
+                filterTarget = "ALL";          
             } else {
-                filterTarget = selectedCouncil.trim();   // 학과명 그대로 비교
+                filterTarget = selectedCouncil.trim();   
             }
         }
 
@@ -214,15 +211,12 @@ public class EventListFrame extends JFrame {
 
             if ("삭제".equals(event.status)) continue;
 
-            // 1) 상태 계산
             String status = computeEventStatus(event);
             event.status = status;
 
-            // 2) 종료된 행사는 사용자 화면에서 숨김
             if ("종료".equals(status)) continue;
 
-            // 3) 학생회(학과) 필터
-            if (filterTarget != null) {                   // 전체가 아닐 때만 필터
+            if (filterTarget != null) {                   
                 String target = event.targetDept != null ? event.targetDept.trim() : "";
                 if (target.isEmpty()) continue;
                 if (!target.equals(filterTarget)) continue;
@@ -246,17 +240,11 @@ public class EventListFrame extends JFrame {
         eventListPanel.repaint();
     }
 
-    /** 🔹 간식 행사 / 과 행사(참여형) 상태 계산 */
     private String computeEventStatus(EventData e) {
-
-        // 🔥 이미 '삭제'로 마킹된 건 그대로 유지
-        if ("삭제".equals(e.status)) {
-            return "삭제";
-        }
+        if ("삭제".equals(e.status)) return "삭제";
 
         LocalDateTime now = LocalDateTime.now();
 
-        // 타입 판별
         String type = (e.eventType != null) ? e.eventType.trim() : "";
         boolean isSnack = false;
         boolean isActivity = false;
@@ -270,42 +258,29 @@ public class EventListFrame extends JFrame {
             }
         }
 
-        // 타입 비어 있으면 기본적으로 과행사로 취급
-        if (!isSnack && !isActivity) {
-            isActivity = true;
-        }
+        if (!isSnack && !isActivity) isActivity = true;
 
-        LocalDateTime eventTime  = e.date;        // 과행사 실제 일시
-        LocalDateTime applyStart = e.applyStart;  // 신청/배포 시작
-        LocalDateTime applyEnd   = e.applyEnd;    // 신청/배포 종료
+        LocalDateTime eventTime  = e.date;        
+        LocalDateTime applyStart = e.applyStart;  
+        LocalDateTime applyEnd   = e.applyEnd;    
 
         int total   = e.totalCount;
         int current = e.currentCount;
 
-        // ======================
-        // 1) 간식 행사 (SNACK)
-        // ======================
         if (isSnack) {
-            // 간식 배포 시간: applyStart ~ applyEnd 를 우선 사용
             LocalDateTime snackStart = (applyStart != null) ? applyStart : eventTime;
             LocalDateTime snackEnd   = applyEnd;
 
-            // 종료 시간이 없다면 1시간짜리로 가정
             if (snackEnd == null && snackStart != null) {
                 snackEnd = snackStart.plusHours(1);
             }
 
-            // 배포 종료 이후 → 종료
             if (snackEnd != null && now.isAfter(snackEnd)) {
                 return "종료";
             }
-
-            // 배포 시작 전
             if (snackStart != null && now.isBefore(snackStart)) {
                 return "진행 전";
             }
-
-            // 배포 중
             if (total > 0 && current >= total) {
                 return "신청 마감";
             } else {
@@ -313,26 +288,15 @@ public class EventListFrame extends JFrame {
             }
         }
 
-        // ==========================
-        // 2) 과 행사(참여형) ACTIVITY
-        // ==========================
-
-        // 행사 날짜가 지났으면 종료
         if (eventTime != null && now.isAfter(eventTime)) {
             return "종료";
         }
-
-        // 신청 시작 전
         if (applyStart != null && now.isBefore(applyStart)) {
             return "신청 전";
         }
-
-        // 신청 종료 후 (행사 전이든 상관 없이)
         if (applyEnd != null && now.isAfter(applyEnd)) {
             return "신청 마감";
         }
-
-        // 신청 기간 안 or 신청 기간 정보 없음
         if (total > 0 && current >= total) {
             return "신청 마감";
         } else {
@@ -347,15 +311,33 @@ public class EventListFrame extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(new RoundedBorder(15, new Color(200, 200, 200), 2));
 
-        // 상태 라벨
+        // 상태 계산
         String status = event.status != null ? event.status : computeEventStatus(event);
         JLabel typeLabel = new JLabel(status);
         typeLabel.setFont(uiFont.deriveFont(Font.BOLD, 13f));
         typeLabel.setForeground(BROWN);
         typeLabel.setBounds(20, 20, 100, 25);
         typeLabel.setOpaque(true);
-        boolean isClosed = "신청마감".equals(status) || "신청 마감".equals(status) || "종료".equals(status);
-        typeLabel.setBackground(isClosed ? ORANGE_CLOSED : GREEN_PROGRESS);
+
+        // ✅ 상태별 색상 적용 (수정됨)
+        Color statusColor;
+        switch (status) {
+            case "진행 전":
+            case "신청 전":
+                statusColor = GRAY_BEFORE; // 회색
+                break;
+            case "신청 마감":
+            case "신청마감":
+                statusColor = RED_CLOSED; // 빨간색
+                break;
+            case "종료":
+                statusColor = ORANGE_CLOSED; // 기존 오렌지
+                break;
+            default:
+                statusColor = GREEN_PROGRESS; // 진행 중, 신청 중 등
+                break;
+        }
+        typeLabel.setBackground(statusColor);
         typeLabel.setHorizontalAlignment(SwingConstants.CENTER);
         card.add(typeLabel);
 
@@ -366,7 +348,7 @@ public class EventListFrame extends JFrame {
         nameLabel.setBounds(20, 55, 400, 35);
         card.add(nameLabel);
 
-        // 남은 인원 = total - current (0 아래로는 내려가지 않게)
+        // 남은 인원
         int remaining = event.totalCount - event.currentCount;
         if (remaining < 0) remaining = 0;
 

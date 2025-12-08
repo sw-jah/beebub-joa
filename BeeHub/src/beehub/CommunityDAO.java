@@ -47,6 +47,7 @@ public class CommunityDAO {
     public List<PostDTO> getAllPostsOrderByNewest() {
         List<PostDTO> list = new ArrayList<>();
 
+        // 🔥 수정된 SQL: p.comment_count 대신 서브쿼리로 실제 개수를 셉니다.
         String sql =
             "SELECT p.post_id, " +
             "       p.writer_hakbun, " +
@@ -55,7 +56,7 @@ public class CommunityDAO {
             "       p.content, " +
             "       DATE_FORMAT(p.created_at, '%Y-%m-%d') AS created_date, " +
             "       p.like_count, " +
-            "       p.comment_count " +
+            "       (SELECT COUNT(*) FROM community_comment c WHERE c.post_id = p.post_id) AS comment_count " + 
             "FROM community_post p " +
             "LEFT JOIN members m ON p.writer_hakbun = m.hakbun " +
             "WHERE p.is_deleted = 0 " +
@@ -69,11 +70,13 @@ public class CommunityDAO {
                 PostDTO dto = new PostDTO();
                 dto.postId         = rs.getInt("post_id");
                 dto.writerHakbun   = rs.getString("writer_hakbun");
-                dto.writerNickname = rs.getString("writer_nickname"); // ✅ 항상 최신 닉네임/이름
+                dto.writerNickname = rs.getString("writer_nickname");
                 dto.title          = rs.getString("title");
                 dto.content        = rs.getString("content");
                 dto.createdDate    = rs.getString("created_date");
                 dto.likeCount      = rs.getInt("like_count");
+                
+                // 이제 서브쿼리가 계산한 정확한 개수를 가져옵니다.
                 dto.commentCount   = rs.getInt("comment_count");
 
                 list.add(dto);
@@ -83,7 +86,7 @@ public class CommunityDAO {
         }
         return list;
     }
-
+    
     // ================================
     // 1-0. 단일 게시글 조회
     //      ✅ 작성자 닉네임도 members 기준 최신값 사용
