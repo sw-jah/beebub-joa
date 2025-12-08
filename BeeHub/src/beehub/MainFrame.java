@@ -266,11 +266,11 @@ public class MainFrame extends JFrame {
                 itemLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
                 
                 if (item.type.equals("RENTAL")) {
-                    itemLabel.setText("[반납] '" + item.title + "' 반납일입니다!");
-                    itemLabel.setForeground(Color.RED);
+                    itemLabel.setText("[물품] '" + item.title + "' 반납일입니다!");
+                    itemLabel.setForeground(Color.gray);
                 } else {
                     itemLabel.setText("- [행사] " + item.title);
-                    itemLabel.setForeground(BROWN);
+                    itemLabel.setForeground(Color.gray);
                 }
                 
                 todayContentPanel.add(itemLabel);

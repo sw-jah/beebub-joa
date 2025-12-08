@@ -415,12 +415,14 @@ public class MyPageFrame extends JFrame {
         leftPanel.setBorder(new RoundedBorder(20, BORDER_COLOR, 1));
         contentPanel.add(leftPanel);
 
-        // 🔻 여기에서 "과 행사 참여 기록" 뺀 버전
+     // [MyPageFrame.java] initContent() 메서드 내부
         String[] menuItems = {
                 "나의 활동", "회원 정보", "작성 게시글", "댓글 단 게시글", "좋아요 누른 게시글",
-                "이용 기록", "물품 대여 기록", "공간 대여 기록",
+                "이용 기록", "물품 대여 기록", "공간 대여 기록", 
+                "나의 행사 목록",  // <--- ⭐ 이 줄을 추가하세요! (콤마 주의)
                 "--- 분리선 ---",
                 "응모함"
+        
         };
 
         menuList = new JList<>(menuItems);
@@ -458,12 +460,15 @@ public class MyPageFrame extends JFrame {
                 if (selectedItem != null) {
                     if (!selectedItem.equals("나의 활동") && !selectedItem.equals("이용 기록") && !selectedItem.equals("--- 분리선 ---")) {
                         cardLayout.show(detailPanel, selectedItem);
+                        
+                        
                     }
                 }
             }
         });
     }
 
+ // [MyPageFrame.java] addDetailCards() 메서드 내부
     private void addDetailCards() {
         detailPanel.add(createUserInfoPanel(), "회원 정보");
         detailPanel.add(createActivityListPanel("작성 게시글"), "작성 게시글");
@@ -471,11 +476,11 @@ public class MyPageFrame extends JFrame {
         detailPanel.add(createActivityListPanel("좋아요 누른 게시글"), "좋아요 누른 게시글");
         detailPanel.add(createRentalListPanel(), "물품 대여 기록");
         detailPanel.add(createSpaceRentalListPanel(), "공간 대여 기록");
+        
+        detailPanel.add(createEventParticipationPanel(), "나의 행사 목록"); // <--- ⭐ 이 줄 추가!
+        
         detailPanel.add(createApplicationPanel(), "응모함");
-
-        JPanel welcomePanel = createPlaceholderPanel("환영합니다!", userName + "님의 마이페이지입니다.");
-        detailPanel.add(welcomePanel, "나의 활동");
-        detailPanel.add(welcomePanel, "이용 기록");
+        // ... (나머지 코드)
     }
 
     
@@ -1941,6 +1946,72 @@ public class MyPageFrame extends JFrame {
         }
         return btn;
     }
+    
+ // [MyPageFrame.java] 클래스 내부 하단에 추가
+
+ // ===================== 행사 참여 기록 패널 (NEW) =====================
+ private JPanel createEventParticipationPanel() {
+     JPanel panel = new JPanel(new BorderLayout());
+     panel.setBackground(Color.WHITE);
+     panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+     // 제목
+     JLabel titleLabel = new JLabel("나의 행사 목록", SwingConstants.LEFT);
+     titleLabel.setFont(uiFont.deriveFont(Font.BOLD, 24f));
+     titleLabel.setForeground(BROWN);
+     panel.add(titleLabel, BorderLayout.NORTH);
+
+     // 테이블 헤더 설정
+     String[] headers = {"행사명", "일시", "장소"};
+     DefaultTableModel tableModel = new DefaultTableModel(headers, 0) {
+         @Override
+         public boolean isCellEditable(int row, int column) {
+             return false; // 수정 불가능하게
+         }
+     };
+
+     JTable eventTable = new JTable(tableModel);
+     styleTable(eventTable); // 기존 스타일 적용
+
+     // 컬럼 너비 조절
+     eventTable.getColumnModel().getColumn(0).setPreferredWidth(250); // 행사명
+     eventTable.getColumnModel().getColumn(1).setPreferredWidth(200); // 일시
+     eventTable.getColumnModel().getColumn(2).setPreferredWidth(150); // 장소
+     
+     // 가운데 정렬 적용
+     eventTable.getColumnModel().getColumn(1).setCellRenderer(new CenterRenderer());
+     eventTable.getColumnModel().getColumn(2).setCellRenderer(new CenterRenderer());
+
+     JScrollPane scrollPane = new JScrollPane(eventTable);
+     scrollPane.getViewport().setBackground(Color.WHITE);
+     scrollPane.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
+     panel.add(scrollPane, BorderLayout.CENTER);
+
+     // 로그인 체크 후 데이터 불러오기
+     Member current = LoginSession.getUser();
+     if (current == null) {
+         return panel;
+     }
+
+     // ⭐ 만든 DAO 사용해서 DB 데이터 가져오기
+     try {
+         EventDAO eventDAO = new EventDAO();
+         List<MyActivityDTO> list = eventDAO.getMyActivityList(current.getHakbun());
+
+         for (MyActivityDTO dto : list) {
+             tableModel.addRow(new Object[]{
+                 dto.getEventName(),
+                 dto.getEventDate(),
+                 dto.getLocation()
+             });
+         }
+     } catch (Exception e) {
+         e.printStackTrace();
+         showCustomAlertPopup("오류", "행사 기록을 불러오는 중 오류가 발생했습니다.\n" + e.getMessage());
+     }
+
+     return panel;
+ }
 
     private static class RoundedBorder implements Border {
         private int radius;
