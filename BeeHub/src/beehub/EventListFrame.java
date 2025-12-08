@@ -80,6 +80,18 @@ public class EventListFrame extends JFrame {
         logoLabel.setForeground(BROWN);
         logoLabel.setBounds(30, 20, 300, 40);
         headerPanel.add(logoLabel);
+        
+        logoLabel.setCursor(new Cursor(Cursor.HAND_CURSOR)); // 1. 마우스 올리면 손가락 모양으로 변경
+        logoLabel.addMouseListener(new MouseAdapter() {      // 2. 마우스 기능 추가
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                // 현재 창 닫기
+                dispose(); 
+                
+                // 메인 화면(MainFrame) 새로 열기
+                new MainFrame(); 
+            }
+        });
 
         JLabel jarIcon = new JLabel();
         jarIcon.setBounds(310, 25, 40, 40);

@@ -6,8 +6,7 @@ import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.InputStream;
-import java.net.URL; // URL 클래스 추가
-import java.sql.Statement;
+import java.net.URL;
 import admin.AdminMainFrame;
 import council.CouncilMainFrame;
 
@@ -21,14 +20,10 @@ public class LoginFrame extends JFrame {
     private static final Color INPUT_BG = new Color(255, 255, 255);
     private static final Color GRAY = new Color(200, 200, 200);
 
-    // ===============================
-    // 🔤 폰트 설정 (리소스 로드 방식 통일)
-    // ===============================
     private static Font uiFont;
 
     static {
         try {
-            // [수정] 클래스패스 리소스 로딩 방식 사용
             InputStream is = LoginFrame.class.getResourceAsStream("/fonts/DNFBitBitv2.ttf");
             if (is == null) {
                 uiFont = new Font("맑은 고딕", Font.BOLD, 12);
@@ -41,9 +36,6 @@ public class LoginFrame extends JFrame {
         }
     }
 
-    // ===============================
-    // UI 컴포넌트
-    // ===============================
     private CardLayout cardLayout;
     private JPanel containerPanel;
     
@@ -76,13 +68,12 @@ public class LoginFrame extends JFrame {
     }
 
     // ===============================================================
-    // 1️⃣ 일반 로그인 화면
+    // 1️⃣ 일반 로그인 화면 (학생 전용)
     // ===============================================================
     private JPanel createLoginPanel() {
         JPanel panel = createBackgroundPanel();
         panel.setLayout(null);
 
-        // [수정] 이미지 로딩 방식 통일 (getResource 사용)
         JLabel beeIcon = new JLabel();
         URL imgUrl = getClass().getResource("/img/login-bee.png");
         
@@ -92,14 +83,12 @@ public class LoginFrame extends JFrame {
             beeIcon.setIcon(new ImageIcon(img));
             beeIcon.setBounds(380, 20, 100, 100); 
         } else {
-            // 이미지가 없을 경우 대체 텍스트
             beeIcon.setText("🐝");
             beeIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 60));
             beeIcon.setBounds(400, 30, 80, 80);
         }
         panel.add(beeIcon);
 
-        // 타이틀
         OutlinedLabel title = new OutlinedLabel("서울여대 꿀단지", SwingConstants.CENTER);
         title.setFont(uiFont.deriveFont(45f));
         title.setForeground(BROWN);
@@ -108,7 +97,6 @@ public class LoginFrame extends JFrame {
         title.setBounds(25, 100, 450, 80);
         panel.add(title);
 
-        // 입력창
         JLabel idLabel = new JLabel("아이디 :");
         idLabel.setFont(uiFont.deriveFont(20f));
         idLabel.setForeground(BROWN);
@@ -169,7 +157,6 @@ public class LoginFrame extends JFrame {
         findHakbunField = addLabelAndField(panel, "학번 :",     240);
         findPhoneField  = addLabelAndField(panel, "전화번호 :", 320);
 
-
         JButton cancelBtn = createSmallButton("취소");
         cancelBtn.setBounds(100, 420, 120, 55);
         cancelBtn.addActionListener(e -> cardLayout.show(containerPanel, "login"));
@@ -184,13 +171,12 @@ public class LoginFrame extends JFrame {
     }
 
     // ===============================================================
-    // 3️⃣ 관리자 로그인 화면
+    // 3️⃣ 관리자 로그인 화면 (관리자 전용)
     // ===============================================================
     private JPanel createAdminPanel() {
         JPanel panel = createBackgroundPanel();
         panel.setLayout(null);
 
-        // [수정] 이미지 로딩 방식 통일 (getResource 사용)
         JLabel beeIcon = new JLabel();
         URL imgUrl = getClass().getResource("/img/login-bee.png");
 
@@ -258,9 +244,9 @@ public class LoginFrame extends JFrame {
         return panel;
     }
 
- // ===============================================================
- // 💾 일반 사용자 로그인 처리
- // ===============================================================
+    // ===============================================================
+    // 💾 일반 사용자 로그인 처리 (학생만 가능!)
+    // ===============================================================
     private void handleUserLogin() {
         String id = hakbunField.getText().trim();
         String pw = new String(pwField.getPassword()).trim();
@@ -271,65 +257,33 @@ public class LoginFrame extends JFrame {
         }
 
         UserDAO dao = new UserDAO();
-
-        // 🔹 DB에서 로그인 시도 후 User 객체 받아오기
         User loginUser = dao.loginAndGetUser(id, pw);
 
         if (loginUser != null) {
-            // 기존 UserManager 유지
-            UserManager.setCurrentUser(loginUser);
+            String role = loginUser.getRole();
 
-            // ⭐ User → Member 로 변환해서 세션에 저장
+            // 🛑 관리자는 일반 로그인 불가!
+            if (!"USER".equalsIgnoreCase(role)) {
+                showCustomDialog("관리자 계정입니다.\n관리자 로그인 페이지를 이용해주세요.", false);
+                return;
+            }
+
+            // ✅ 일반 학생만 통과
+            UserManager.setCurrentUser(loginUser);
             Member m = convertToMember(loginUser);
             LoginSession.setUser(m);
 
-            // 🔥 role 에 따라 화면 분기
-            String role = m.getRole();   // members 테이블의 role 값
-
-            if ("ADMIN_COUNCIL".equals(role) || "COUNCIL".equalsIgnoreCase(role)) {
-                // 👉 학생회 계정: CouncilMainFrame 으로
-                //   id = 학생회 아이디(hakbun), name = 학과명(major)
-                new CouncilMainFrame(m.getHakbun(), m.getMajor());
-
-            } else if ("ADMIN_TOTAL".equals(role) || "ADMIN".equalsIgnoreCase(role)) {
-                // 👉 총관리자 계정: AdminMainFrame
-                new AdminMainFrame();
-
-            } else {
-                // 👉 일반 회원: 기존 메인 화면
-                new MainFrame(m.getName(), m.getHakbun());
-            }
-
-            dispose();   // 로그인창 닫기
+            new MainFrame(m.getName(), m.getHakbun());
+            dispose();
 
         } else {
             showCustomDialog("로그인 실패\n아이디 또는 비밀번호를 확인하세요.", false);
         }
     }
 
-
- // 💾 비밀번호 찾기 처리
-    private void handleFindPassword() {
-        String name   = findNameField.getText().trim();
-        String hakbun = findHakbunField.getText().trim();
-        String phone  = findPhoneField.getText().trim();
-
-        if (name.isEmpty() || hakbun.isEmpty() || phone.isEmpty()) {
-            showCustomDialog("이름, 학번, 전화번호를\n모두 입력해주세요.", false);
-            return;
-        }
-
-        UserDAO dao = new UserDAO();
-        String pw = dao.findPassword(name, hakbun, phone);  // ← UserDAO에서 DB 조회
-
-        if (pw != null) {
-            showCustomDialog("비밀번호는\n" + pw + " 입니다.", true);  // 확인 누르면 로그인 화면으로
-        } else {
-            showCustomDialog("일치하는 회원 정보가 없습니다.", false);
-        }
-    }
-
-    
+    // ===============================================================
+    // 💾 관리자 로그인 처리 (관리자만 가능!)
+    // ===============================================================
     private void handleAdminLogin() {
         String id = adminIdField.getText().trim();
         String pw = new String(adminPwField.getPassword()).trim();
@@ -341,6 +295,7 @@ public class LoginFrame extends JFrame {
 
         UserDAO dao = new UserDAO();
         
+        // 1. 하드코딩된 admin 계정 체크 (기존 유지)
         if (dao.checkAdminLogin(id, pw)) {
             showCustomDialog("총 관리자님 환영합니다!", false);
             new admin.AdminMainFrame(); 
@@ -348,14 +303,54 @@ public class LoginFrame extends JFrame {
             return;
         } 
         
-        UserDAO.CouncilInfo council = dao.getCouncilInfo(id, pw);
-        if (council != null) {
-            new council.CouncilMainFrame(council.id, council.name); 
-            dispose();
+        // 2. DB에 있는 관리자 계정 체크 (council_soft 등)
+        User loginUser = dao.loginAndGetUser(id, pw);
+        
+        if (loginUser != null) {
+            String role = loginUser.getRole();
+            
+            // 🛑 일반 학생은 관리자 로그인 불가!
+            if ("USER".equalsIgnoreCase(role)) {
+                showCustomDialog("일반 사용자는 접근할 수 없습니다.", false);
+                return;
+            }
+
+            // ✅ 관리자(총관리자 or 학생회)만 통과
+            UserManager.setCurrentUser(loginUser);
+            Member m = convertToMember(loginUser);
+            LoginSession.setUser(m);
+
+            if ("ADMIN_COUNCIL".equals(role) || "COUNCIL".equalsIgnoreCase(role)) {
+                new CouncilMainFrame(m.getHakbun(), m.getMajor());
+                dispose();
+            } else if ("ADMIN_TOTAL".equals(role) || "ADMIN".equalsIgnoreCase(role)) {
+                new AdminMainFrame();
+                dispose();
+            }
+        } else {
+            showCustomDialog("로그인 실패\n정보를 확인해주세요.", false);
+        }
+    }
+
+    // 💾 비밀번호 찾기 처리
+    private void handleFindPassword() {
+        String name   = findNameField.getText().trim();
+        String hakbun = findHakbunField.getText().trim();
+        String phone  = findPhoneField.getText().trim();
+
+        if (name.isEmpty() || hakbun.isEmpty() || phone.isEmpty()) {
+            showCustomDialog("이름, 학번, 전화번호를\n모두 입력해주세요.", false);
             return;
         }
 
-        showCustomDialog("로그인 실패\n정보를 확인해주세요.", false);
+        UserDAO dao = new UserDAO();
+        String pw = dao.findPassword(name, hakbun, phone);
+
+        if (pw != null) {
+            showCustomDialog("비밀번호는\n" + pw + " 입니다.", true);
+        } else {
+            showCustomDialog("일치하는 회원 정보가 없습니다.", false);
+        }
     }
 
     // ===============================================================
@@ -476,7 +471,6 @@ public class LoginFrame extends JFrame {
         };
     }
 
- // 🔥 리턴 타입을 void → JTextField 로 변경
     private JTextField addLabelAndField(JPanel p, String text, int y) {
         JLabel l = new JLabel(text);
         l.setFont(uiFont.deriveFont(18f));
@@ -488,9 +482,8 @@ public class LoginFrame extends JFrame {
         f.setBounds(160, y - 5, 250, 40);
         p.add(f);
 
-        return f;   // 이제 정상
+        return f;
     }
-
 
     private JTextField createStyledTextField() {
         JTextField f = new JTextField();
@@ -498,7 +491,6 @@ public class LoginFrame extends JFrame {
         f.setBackground(INPUT_BG);
         f.setBorder(BorderFactory.createCompoundBorder(new RoundedBorder(15, GRAY), BorderFactory.createEmptyBorder(5, 10, 5, 10)));
         return f;
-      
     }
 
     private JPasswordField createStyledPasswordField() {
@@ -560,29 +552,19 @@ public class LoginFrame extends JFrame {
     
     private Member convertToMember(User user) {
         Member m = new Member();
-
-        // 기본 정보
         m.setHakbun(user.getId());
         m.setPw(user.getPassword());
         m.setName(user.getName());
         m.setMajor(user.getDept());
         m.setPoint(user.getPoints());
-
-        // ⭐ 닉네임 그대로 넣기 (기존 null 삭제)
         m.setNickname(user.getNickname());
-
-        // 기본값 처리
+        
         if (m.getIsFeePaid() == null) m.setIsFeePaid("N");
         if (m.getGrade() == null)     m.setGrade("일벌");
         if (m.getPenaltyDate() == null) m.setPenaltyDate(null);
         if (m.getWarningCount() == 0) m.setWarningCount(0);
 
-        // 권한
         m.setRole(user.getRole());
-
         return m;
     }
-
-
-
-    }
+}
