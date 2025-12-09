@@ -278,7 +278,7 @@ public class ItemListFrame extends JFrame {
                 // ✅ 선택된 아이템 + 로그인한 유저 ID를 같이 넘김
                 new ItemDetailFrame(item, userId).setVisible(true);
                 // 굳이 리스트를 닫고 싶지 않으면 dispose() 는 빼도 됨
-                // dispose();
+                dispose();
             }
             
             public void mouseEntered(MouseEvent e) { card.setBackground(new Color(250, 250, 250)); }

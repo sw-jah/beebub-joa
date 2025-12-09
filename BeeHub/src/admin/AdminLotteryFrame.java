@@ -162,6 +162,41 @@ public class AdminLotteryFrame extends JFrame {
         scrollPane.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane);
+        
+        scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+    }
+    
+ // [AdminLotteryFrame.java] 파일 맨 하단에 ModernScrollBarUI 클래스 추가 (위와 동일)
+    private static class ModernScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI {
+        // ... (내용 동일하게 복사) ...
+        @Override
+        protected void configureScrollBarColors() {
+            this.thumbColor = new Color(200, 200, 200);
+            this.trackColor = new Color(245, 245, 245);
+        }
+        @Override
+        protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
+        @Override
+        protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
+        private JButton createZeroButton() {
+            JButton btn = new JButton();
+            btn.setPreferredSize(new Dimension(0, 0));
+            return btn;
+        }
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+            if (!c.isEnabled()) return;
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(thumbColor);
+            g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
+        }
+        @Override
+        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+            g.setColor(trackColor);
+            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+        }
     }
 
     public void refreshList() {

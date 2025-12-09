@@ -98,12 +98,12 @@ public class AdminLotteryAddDialog extends JDialog {
         yPos += gap;
 
         // 응모 시작/마감 일시
-        addLabel(yPos, "응모 시작 일시 (예: 2025-12-10 00:00 또는 2025-12-10 00:00:00)");
+        addLabel(yPos, "응모 시작 일시 (예: 2025-12-10 00:00");
         appStartField = createField(yPos + 25);
         add(appStartField);
         yPos += gap;
 
-        addLabel(yPos, "응모 마감 일시 (예: 2025-12-10 23:59 또는 2025-12-10 23:59:59)");
+        addLabel(yPos, "응모 마감 일시 (예: 2025-12-10 23:59)");
         appEndField = createField(yPos + 25);
         add(appEndField);
         yPos += gap;
@@ -127,6 +127,7 @@ public class AdminLotteryAddDialog extends JDialog {
 
         // 버튼들
         JButton cancelBtn = new JButton("취소");
+        cancelBtn.setFont(uiFont);
         cancelBtn.setBounds(100, yPos, 100, 40);
         cancelBtn.setBackground(new Color(200, 200, 200));
         cancelBtn.setForeground(Color.WHITE);
@@ -135,6 +136,7 @@ public class AdminLotteryAddDialog extends JDialog {
         add(cancelBtn);
 
         JButton okBtn = new JButton("등록");
+        okBtn.setFont(uiFont);
         okBtn.setBounds(250, yPos, 100, 40);
         okBtn.setBackground(BROWN);
         okBtn.setForeground(Color.WHITE);
@@ -212,6 +214,7 @@ public class AdminLotteryAddDialog extends JDialog {
     }
 
     // 🎨 이쁜 팝업
+ // 🎨 이쁜 팝업 (수정됨: 폰트 적용을 위해 JTextPane 사용)
     private void showMsgPopup(String title, String msg) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setUndecorated(true);
@@ -234,12 +237,23 @@ public class AdminLotteryAddDialog extends JDialog {
         panel.setLayout(null);
         dialog.add(panel);
 
-        JLabel l = new JLabel("<html><center>" + msg.replace("\n", "<br>") + "</center></html>",
-                SwingConstants.CENTER);
-        l.setFont(uiFont.deriveFont(16f));
-        l.setForeground(BROWN);
-        l.setBounds(20, 60, 360, 70);
-        panel.add(l);
+        // [수정 포인트] JLabel(html) 대신 JTextPane 사용 -> 폰트 강제 적용 및 중앙 정렬
+        JTextPane msgPane = new JTextPane();
+        msgPane.setText(msg);
+        msgPane.setFont(uiFont.deriveFont(18f)); // 폰트 크기 설정
+        msgPane.setForeground(BROWN);
+        msgPane.setOpaque(false);
+        msgPane.setEditable(false);
+        
+        // 문단 중앙 정렬 스타일 적용
+        javax.swing.text.StyledDocument doc = msgPane.getStyledDocument();
+        javax.swing.text.SimpleAttributeSet center = new javax.swing.text.SimpleAttributeSet();
+        javax.swing.text.StyleConstants.setAlignment(center, javax.swing.text.StyleConstants.ALIGN_CENTER);
+        doc.setParagraphAttributes(0, doc.getLength(), center, false);
+
+        // 위치 설정 (JLabel보다 텍스트가 위로 붙는 경향이 있어 y좌표를 살짝 내림)
+        msgPane.setBounds(20, 80, 360, 80); 
+        panel.add(msgPane);
 
         JButton okBtn = new JButton("확인");
         okBtn.setFont(uiFont.deriveFont(16f));
@@ -251,5 +265,4 @@ public class AdminLotteryAddDialog extends JDialog {
         panel.add(okBtn);
 
         dialog.setVisible(true);
-    }
-}
+    } }

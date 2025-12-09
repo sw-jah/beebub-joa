@@ -259,6 +259,7 @@ public class AdminItemManageFrame extends JFrame {
         }
 
         JButton yes = new JButton("네");
+        yes.setFont(uiFont);
         yes.setBounds(60, 160, 120, 45);
         yes.setBackground(BROWN);
         yes.setForeground(Color.WHITE);
@@ -266,6 +267,7 @@ public class AdminItemManageFrame extends JFrame {
         p.add(yes);
 
         JButton no = new JButton("아니오");
+        no.setFont(uiFont);
         no.setBounds(220, 160, 120, 45);
         no.setBackground(BROWN);
         no.setForeground(Color.WHITE);

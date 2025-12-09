@@ -94,6 +94,9 @@ public class AdminRentManageFrame extends JFrame {
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane);
+        
+        scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
     }
 
     private void refreshList() {
@@ -317,6 +320,9 @@ public class AdminRentManageFrame extends JFrame {
         }
 
         JButton yesBtn = new JButton("네");
+        
+        
+;
         yesBtn.setBounds(60, 160, 120, 45);
         yesBtn.setBackground(BROWN);
         yesBtn.setForeground(Color.WHITE);
@@ -344,6 +350,39 @@ public class AdminRentManageFrame extends JFrame {
 
         dialog.setVisible(true);
         return result[0];
+    }
+    
+ // [AdminRentManageFrame.java] 파일 맨 하단에 클래스 추가 (RoundedBorder 클래스 위나 아래)
+
+    // ▼▼▼ [추가할 클래스] ▼▼▼
+    private static class ModernScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI {
+        @Override
+        protected void configureScrollBarColors() {
+            this.thumbColor = new Color(200, 200, 200);
+            this.trackColor = new Color(245, 245, 245);
+        }
+        @Override
+        protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
+        @Override
+        protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
+        private JButton createZeroButton() {
+            JButton btn = new JButton();
+            btn.setPreferredSize(new Dimension(0, 0));
+            return btn;
+        }
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+            if (!c.isEnabled()) return;
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(thumbColor);
+            g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
+        }
+        @Override
+        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+            g.setColor(trackColor);
+            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+        }
     }
 
     private static class RoundedBorder implements Border {

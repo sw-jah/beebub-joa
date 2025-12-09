@@ -74,7 +74,7 @@ public class AdminMainFrame extends JFrame {
 
         menuContainer.add(createMenuButton("물품 관리", e -> {
             new AdminItemManageFrame(); 
- //           dispose();
+              dispose();
         }));
         menuContainer.add(createMenuButton("대여 관리", e -> {
             new AdminRentManageFrame(); 
@@ -158,28 +158,29 @@ public class AdminMainFrame extends JFrame {
         msgLabel.setForeground(BROWN);
         msgLabel.setBounds(0, 60, 400, 80); // 패널 전체 너비(400)를 사용하여 정중앙에 위치
         panel.add(msgLabel);
-
-        // 취소 버튼
-        JButton cancelBtn = new JButton("취소");
-        cancelBtn.setFont(uiFont.deriveFont(18f));
-        cancelBtn.setBackground(new Color(200, 200, 200));
-        cancelBtn.setForeground(BROWN);
-        cancelBtn.setBounds(50, 160, 130, 50);
-        cancelBtn.setBorder(new RoundedBorder(20, new Color(180, 180, 180)));
-        cancelBtn.setFocusPainted(false);
-        cancelBtn.addActionListener(e -> dialog.dispose());
-        panel.add(cancelBtn);
-
-        // 확인(로그아웃) 버튼
-        JButton okBtn = createStyledButton("확인");
+        
+        JButton okBtn = createStyledButton("네");
         okBtn.setFont(uiFont.deriveFont(18f));
-        okBtn.setBounds(200, 160, 130, 50);
+        okBtn.setBounds(50, 160, 130, 50);;
         okBtn.addActionListener(e -> {
             dialog.dispose();
             new LoginFrame(); 
             dispose();        
         });
         panel.add(okBtn);
+
+        // 취소 버튼
+        JButton cancelBtn = new JButton("아니오");
+        cancelBtn.setFont(uiFont.deriveFont(18f));
+        cancelBtn.setBackground(BROWN);
+        cancelBtn.setForeground(Color.WHITE);
+        cancelBtn.setBounds(200, 160, 130, 50);
+        cancelBtn.setFocusPainted(false);
+        cancelBtn.addActionListener(e -> dialog.dispose());
+        panel.add(cancelBtn);
+
+        // 확인(로그아웃) 버튼
+        
 
         dialog.setVisible(true);
     }

@@ -1205,8 +1205,8 @@ public class MyPageFrame extends JFrame {
         JTable rentalTable = new JTable(tableModel);
         styleTable(rentalTable);
 
-        rentalTable.getColumnModel().getColumn(0).setPreferredWidth(300);
-        rentalTable.getColumnModel().getColumn(1).setPreferredWidth(250);
+        rentalTable.getColumnModel().getColumn(0).setPreferredWidth(320);
+        rentalTable.getColumnModel().getColumn(1).setPreferredWidth(300);
 
         rentalTable.getColumnModel().getColumn(0).setCellRenderer(new CenterRenderer());
         rentalTable.getColumnModel().getColumn(1).setCellRenderer(new CenterRenderer());
@@ -1290,9 +1290,9 @@ public class MyPageFrame extends JFrame {
         JTable spaceRentalTable = new JTable(tableModel);
         styleTable(spaceRentalTable);
 
-        spaceRentalTable.getColumnModel().getColumn(0).setPreferredWidth(100);
-        spaceRentalTable.getColumnModel().getColumn(1).setPreferredWidth(200);
-        spaceRentalTable.getColumnModel().getColumn(2).setPreferredWidth(120);
+        spaceRentalTable.getColumnModel().getColumn(0).setPreferredWidth(90);
+        spaceRentalTable.getColumnModel().getColumn(1).setPreferredWidth(320);
+        spaceRentalTable.getColumnModel().getColumn(2).setPreferredWidth(90);
 
         spaceRentalTable.getColumnModel().getColumn(0).setCellRenderer(new CenterRenderer());
         spaceRentalTable.getColumnModel().getColumn(1).setCellRenderer(new SpaceDateTimeRenderer());
@@ -1997,9 +1997,9 @@ public class MyPageFrame extends JFrame {
      styleTable(eventTable); // 기존 스타일 적용
 
      // 컬럼 너비 조절
-     eventTable.getColumnModel().getColumn(0).setPreferredWidth(250); // 행사명
-     eventTable.getColumnModel().getColumn(1).setPreferredWidth(200); // 일시
-     eventTable.getColumnModel().getColumn(2).setPreferredWidth(150); // 장소
+     eventTable.getColumnModel().getColumn(0).setPreferredWidth(230); // 행사명
+     eventTable.getColumnModel().getColumn(1).setPreferredWidth(210); // 일시
+     eventTable.getColumnModel().getColumn(2).setPreferredWidth(160); // 장소
      
      // 가운데 정렬 적용
      eventTable.getColumnModel().getColumn(1).setCellRenderer(new CenterRenderer());
