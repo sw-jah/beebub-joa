@@ -1217,7 +1217,7 @@ public class MyPageFrame extends JFrame {
 
         Member current = LoginSession.getUser();
         if (current == null) {
-            showCustomAlertPopup("안내", "로그인 정보가 없어 대여 기록을 불러올 수 없습니다.");
+            showCustomAlertPopup("안내", "로그인 정보가 없어 \n대여 기록을 불러올 수 없습니다.");
             return panel;
         }
 
@@ -1305,7 +1305,7 @@ public class MyPageFrame extends JFrame {
 
         Member current = LoginSession.getUser();
         if (current == null) {
-            showCustomAlertPopup("안내", "로그인 정보가 없어 공간 대여 기록을 불러올 수 없습니다.");
+            showCustomAlertPopup("안내", "로그인 정보가 없어\n 공간 대여 기록을 불러올 수 없습니다.");
             return panel;
         }
 
@@ -1462,7 +1462,7 @@ public class MyPageFrame extends JFrame {
 
                     if (item.status == ReservationStatus.CANCELLABLE) {
 
-                        String confirmMsg = "'" + item.roomName + " (" + item.reservationDate + ")' 예약을 취소하시겠습니까?";
+                        String confirmMsg = "'" + item.roomName + " (" + item.reservationDate + ")'\n예약을 취소하시겠습니까?";
 
                         showCustomConfirmPopup(confirmMsg, () -> {
                             try {
@@ -1502,7 +1502,7 @@ public class MyPageFrame extends JFrame {
         JDialog dialog = new JDialog(this, "비밀번호 수정", true);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
-        dialog.setSize(500, 450);
+        dialog.setSize(480, 380);
         dialog.setLocationRelativeTo(this);
 
         JPanel panel = createPopupPanel();
@@ -1707,23 +1707,22 @@ public class MyPageFrame extends JFrame {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
-        dialog.setSize(400, 350);
+        dialog.setSize(400, 300);
         dialog.setLocationRelativeTo(this);
 
         JPanel panel = createPopupPanel();
         panel.setLayout(null);
         dialog.add(panel);
 
-        JTextArea msgArea = new JTextArea(message);
-        msgArea.setFont(uiFont.deriveFont(18f));
-        msgArea.setForeground(BROWN);
-        msgArea.setOpaque(false);
-        msgArea.setEditable(false);
-        msgArea.setHighlighter(null);
-        msgArea.setLineWrap(true);
-        msgArea.setWrapStyleWord(true);
-        msgArea.setBounds(30, 60, 340, 80);
-        panel.add(msgArea);
+        // ================= [수정된 부분 시작] =================
+        // JTextArea -> JTextPane으로 변경하여 중앙 정렬 적용
+        JTextPane msgPane = createCenteredTextPane(message);
+        
+        // 위치 조정 (가운데 오게 하기 위해 width를 넉넉히 주고 x좌표 조정)
+        // 팝업 가로가 400이므로, margin 20씩 뺀 360 정도로 설정
+        msgPane.setBounds(20, 80, 360, 100); 
+        panel.add(msgPane);
+        // ================= [수정된 부분 끝] ===================
 
         JButton okBtn = createPopupBtn("확인");
         okBtn.setBounds(135, 220, 130, 45);
@@ -1736,28 +1735,44 @@ public class MyPageFrame extends JFrame {
     private void showSimplePopup(String title, String message) {
         showCustomAlertPopup(title, message);
     }
+    
+ // [추가] 텍스트가 중앙 정렬된 JTextPane 생성 헬퍼 메서드
+    private JTextPane createCenteredTextPane(String text) {
+        JTextPane textPane = new JTextPane();
+        textPane.setText(text);
+        textPane.setFont(uiFont.deriveFont(18f)); // 폰트 크기 설정
+        textPane.setForeground(BROWN);            // 글자색 설정
+        textPane.setOpaque(false);                // 배경 투명하게
+        textPane.setEditable(false);              // 수정 불가
+
+        // 스타일 속성을 사용하여 중앙 정렬 적용
+        StyledDocument doc = textPane.getStyledDocument();
+        SimpleAttributeSet center = new SimpleAttributeSet();
+        StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
+        doc.setParagraphAttributes(0, doc.getLength(), center, false);
+
+        return textPane;
+    }
 
     private void showCustomConfirmPopup(String message, Runnable onConfirm) {
         JDialog dialog = new JDialog(this, "확인", true);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
-        dialog.setSize(400, 350);
+        dialog.setSize(400, 300);
         dialog.setLocationRelativeTo(this);
 
         JPanel panel = createPopupPanel();
         panel.setLayout(null);
         dialog.add(panel);
 
-        JTextArea msgArea = new JTextArea(message);
-        msgArea.setFont(uiFont.deriveFont(18f));
-        msgArea.setForeground(BROWN);
-        msgArea.setOpaque(false);
-        msgArea.setEditable(false);
-        msgArea.setHighlighter(null);
-        msgArea.setLineWrap(true);
-        msgArea.setWrapStyleWord(true);
-        msgArea.setBounds(30, 60, 340, 80);
-        panel.add(msgArea);
+        // ================= [수정된 부분 시작] =================
+        // JTextArea -> JTextPane으로 변경하여 중앙 정렬 적용
+        JTextPane msgPane = createCenteredTextPane(message);
+        
+        // 위치 및 크기 설정
+        msgPane.setBounds(20, 80, 360, 100);
+        panel.add(msgPane);
+        // ================= [수정된 부분 끝] ===================
 
         JButton yesBtn = createPopupBtn("확인");
         yesBtn.setBounds(60, 220, 120, 45);
