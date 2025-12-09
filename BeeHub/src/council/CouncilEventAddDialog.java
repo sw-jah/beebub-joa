@@ -279,7 +279,7 @@ public class CouncilEventAddDialog extends JDialog {
             if (eventDate.isBefore(now)) {
                 showCustomMsgPopup(
                         "날짜 오류", 
-                        "행사 일시(" + eventDate.format(FMT) + ")는 현재 시각(" + nowStr + ")보다 이후여야 합니다."
+                        "행사 일시(" + eventDate.format(FMT) + ")는\n 현재 시각(" + nowStr + ")보다 이후여야 합니다."
                 );
                 return;
             }
@@ -288,7 +288,7 @@ public class CouncilEventAddDialog extends JDialog {
             if (applyStart.isBefore(now)) {
                  showCustomMsgPopup(
                         "날짜 오류",
-                        "신청 시작 일시(" + applyStart.format(FMT) + ")는 현재 시각(" + nowStr + ")보다 이후여야 합니다."
+                        "신청 시작 일시(" + applyStart.format(FMT) + ")는\n 현재 시각(" + nowStr + ")보다 이후여야 합니다."
                  );
                  return;
             }
@@ -297,7 +297,7 @@ public class CouncilEventAddDialog extends JDialog {
             if (applyEnd.isBefore(now)) {
                  showCustomMsgPopup(
                         "날짜 오류",
-                        "신청 마감 일시(" + applyEnd.format(FMT) + ")는 현재 시각(" + nowStr + ")보다 이후여야 합니다."
+                        "신청 마감 일시(" + applyEnd.format(FMT) + ")는\n 현재 시각(" + nowStr + ")보다 이후여야 합니다."
                  );
                  return;
             }
