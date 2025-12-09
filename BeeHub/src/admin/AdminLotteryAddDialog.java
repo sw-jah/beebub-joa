@@ -179,14 +179,52 @@ public class AdminLotteryAddDialog extends JDialog {
                 return;
             }
 
-            // 1) 발표 날짜 (DATE)
+            // 1) 날짜/시간 파싱
             LocalDate announcementDate = LocalDate.parse(ann, DATE_FMT);
+            LocalDateTime appStartDt   = LocalDateTime.parse(appStart, DT_FMT);
+            LocalDateTime appEndDt     = LocalDateTime.parse(appEnd, DT_FMT);
+            LocalDateTime pickStartDt  = LocalDateTime.parse(pickStart, DT_FMT);
+            LocalDateTime pickEndDt    = LocalDateTime.parse(pickEnd, DT_FMT);
 
-            // 2) 응모/수령 시작/마감 (DATETIME) - 초 있어도/없어도 OK
-            LocalDateTime appStartDt  = LocalDateTime.parse(appStart, DT_FMT);
-            LocalDateTime appEndDt    = LocalDateTime.parse(appEnd, DT_FMT);
-            LocalDateTime pickStartDt = LocalDateTime.parse(pickStart, DT_FMT);
-            LocalDateTime pickEndDt   = LocalDateTime.parse(pickEnd, DT_FMT);
+            // ================================================================
+            // 🔥 [추가된 부분] 현재 시간(현실)보다 이전인지 체크
+            // ================================================================
+            if (appStartDt.isBefore(LocalDateTime.now())) {
+                showMsgPopup("날짜 오류", 
+                        "응모 기간이 잘못되었습니다.");
+                return;
+            }
+            // ================================================================
+
+            // ================================================================
+            // 🔥 [기존] 날짜 순서 검증 로직 (엄격한 순서 적용)
+            // 순서: 응모시작 < 응모마감 < 발표일 < 수령시작 < 수령마감
+            // ================================================================
+            boolean isOrderCorrect = true;
+
+            // 1. 응모 시작 < 응모 마감
+            if (!appStartDt.isBefore(appEndDt)) {
+                isOrderCorrect = false;
+            }
+            // 2. 응모 마감 날짜 < 발표 날짜 (하루라도 뒤여야 함)
+            else if (!appEndDt.toLocalDate().isBefore(announcementDate)) {
+                isOrderCorrect = false;
+            }
+            // 3. 발표 날짜 < 수령 시작 날짜 (하루라도 뒤여야 함)
+            else if (!announcementDate.isBefore(pickStartDt.toLocalDate())) {
+                isOrderCorrect = false;
+            }
+            // 4. 수령 시작 < 수령 마감
+            else if (!pickStartDt.isBefore(pickEndDt)) {
+                isOrderCorrect = false;
+            }
+
+            if (!isOrderCorrect) {
+                showMsgPopup("날짜 오류", 
+                        "입력하신 날짜(일시)를 \n확인해주세요.");
+                return; // ⛔ 저장하지 않고 중단
+            }
+            // ================================================================
 
             // 3) 부모 프레임으로 넘기기
             parent.addRound(
@@ -218,7 +256,7 @@ public class AdminLotteryAddDialog extends JDialog {
     private void showMsgPopup(String title, String msg) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setUndecorated(true);
-        dialog.setSize(400, 250);
+        dialog.setSize(380, 250);
         dialog.setLocationRelativeTo(this);
         dialog.setBackground(new Color(0, 0, 0, 0));
 

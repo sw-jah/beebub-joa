@@ -10,7 +10,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 import admin.LotteryManager.Applicant;
 import admin.LotteryManager.LotteryRound;
@@ -23,6 +22,7 @@ public class AdminLotteryFrame extends JFrame {
     private static final Color BLUE_BTN      = new Color(100, 150, 255);
     private static final Color RED_WIN       = new Color(255, 100, 100);
     private static final Color GRAY_LOSE     = new Color(150, 150, 150);
+    private static final Color POPUP_BG      = new Color(255, 250, 205);
 
     private static Font uiFont;
     static {
@@ -34,12 +34,6 @@ public class AdminLotteryFrame extends JFrame {
             uiFont = new Font("맑은 고딕", Font.PLAIN, 14);
         }
     }
-
-    // 날짜 포맷
-    private static final DateTimeFormatter LOT_DATE_FMT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter LOT_DT_FMT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm[:ss]");
 
     private JComboBox<String> roundCombo;
     private JPanel listPanel;
@@ -161,46 +155,15 @@ public class AdminLotteryFrame extends JFrame {
         scrollPane.setBounds(30, 250, 780, 330);
         scrollPane.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        add(scrollPane);
-        
+
+        // 모던 스크롤바 적용
         scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
-    }
-    
- // [AdminLotteryFrame.java] 파일 맨 하단에 ModernScrollBarUI 클래스 추가 (위와 동일)
-    private static class ModernScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI {
-        // ... (내용 동일하게 복사) ...
-        @Override
-        protected void configureScrollBarColors() {
-            this.thumbColor = new Color(200, 200, 200);
-            this.trackColor = new Color(245, 245, 245);
-        }
-        @Override
-        protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
-        @Override
-        protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
-        private JButton createZeroButton() {
-            JButton btn = new JButton();
-            btn.setPreferredSize(new Dimension(0, 0));
-            return btn;
-        }
-        @Override
-        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
-            if (!c.isEnabled()) return;
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(thumbColor);
-            g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
-        }
-        @Override
-        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
-            g.setColor(trackColor);
-            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
-        }
+        
+        add(scrollPane);
     }
 
     public void refreshList() {
-
         listPanel.removeAll();
 
         if (rounds == null || rounds.isEmpty()) {
@@ -235,7 +198,6 @@ public class AdminLotteryFrame extends JFrame {
         int y = 0;
 
         for (Applicant a : r.applicants) {
-
             JPanel row = new JPanel(new GridLayout(1, 4));
             row.setBounds(0, y, 780, 40);
             row.setBackground(Color.WHITE);
@@ -271,13 +233,36 @@ public class AdminLotteryFrame extends JFrame {
     }
 
     private void runLottery() {
-
         if (rounds == null || rounds.isEmpty()) return;
 
         int idx = roundCombo.getSelectedIndex();
         if (idx < 0 || idx >= rounds.size()) return;
 
         LotteryRound r = rounds.get(idx);
+
+        // 응모 기간 체크
+        try {
+            if (r.applicationPeriod != null && r.applicationPeriod.contains("~")) {
+                String[] parts = r.applicationPeriod.split("~");
+                if (parts.length >= 2) {
+                    String endStr = parts[1].trim(); 
+                    DateTimeFormatter checkFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm[:ss]");
+                    LocalDateTime endDate = LocalDateTime.parse(endStr, checkFmt);
+                    
+                    if (LocalDateTime.now().isBefore(endDate)) {
+                        showMsgPopup("추첨 불가", 
+                                "아직 응모 기간이 끝나지 않았습니다.\n" +
+                                "마감일: " + endStr + "\n" +
+                                "(기간 종료 후 추첨 가능합니다)");
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showMsgPopup("오류", "기간 정보를 읽을 수 없어 추첨을 진행할 수 없습니다.\n(" + e.getMessage() + ")");
+            return;
+        }
 
         int confirm = JOptionPane.showConfirmDialog(
                 this,
@@ -289,7 +274,7 @@ public class AdminLotteryFrame extends JFrame {
         if (confirm != JOptionPane.YES_OPTION) return;
 
         if (r.applicants.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "응모자가 없습니다.");
+            showMsgPopup("알림", "응모자가 없습니다.");
             return;
         }
 
@@ -308,16 +293,66 @@ public class AdminLotteryFrame extends JFrame {
 
         boolean ok = LotteryManager.saveDrawResult(r);
         if (!ok) {
-            JOptionPane.showMessageDialog(this, "결과 저장 중 오류 발생");
+            showMsgPopup("오류", "결과 저장 중 오류가 발생했습니다.");
             return;
         }
 
         rounds = LotteryManager.getAllRounds();
         refreshList();
-        JOptionPane.showMessageDialog(this, "추첨 완료!");
+        showMsgPopup("완료", "추첨이 완료되었습니다!");
+    }
+    
+    // 예쁜 팝업
+    private void showMsgPopup(String title, String msg) {
+        JDialog dialog = new JDialog(this, title, true);
+        dialog.setUndecorated(true);
+        dialog.setSize(400, 250);
+        dialog.setLocationRelativeTo(this);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(POPUP_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
+                g2.setColor(BROWN);
+                g2.setStroke(new BasicStroke(3));
+                g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 30, 30);
+            }
+        };
+        panel.setLayout(null);
+        dialog.add(panel);
+
+        JTextPane msgPane = new JTextPane();
+        msgPane.setText(msg);
+        msgPane.setFont(uiFont.deriveFont(18f));
+        msgPane.setForeground(BROWN);
+        msgPane.setOpaque(false);
+        msgPane.setEditable(false);
+
+        javax.swing.text.StyledDocument doc = msgPane.getStyledDocument();
+        javax.swing.text.SimpleAttributeSet center = new javax.swing.text.SimpleAttributeSet();
+        javax.swing.text.StyleConstants.setAlignment(center, javax.swing.text.StyleConstants.ALIGN_CENTER);
+        doc.setParagraphAttributes(0, doc.getLength(), center, false);
+
+        msgPane.setBounds(20, 65, 360, 80);
+        panel.add(msgPane);
+
+        JButton okBtn = new JButton("확인");
+        okBtn.setFont(uiFont.deriveFont(16f));
+        okBtn.setBackground(BROWN);
+        okBtn.setForeground(Color.WHITE);
+        okBtn.setBounds(135, 170, 130, 45);
+        okBtn.setBorder(new RoundedBorder(15, BROWN));
+        okBtn.setFocusPainted(false);
+        okBtn.addActionListener(e -> dialog.dispose());
+        panel.add(okBtn);
+
+        dialog.setVisible(true);
     }
 
-    // 🔥 새 시그니처: 다이얼로그에서 LocalDate/LocalDateTime 받아서 문자열로 넘김
     public void addRound(String title,
                          String prize,
                          int count,
@@ -328,11 +363,13 @@ public class AdminLotteryFrame extends JFrame {
                          LocalDateTime pickupStart,
                          LocalDateTime pickupEnd) {
 
-        String ann = announcementDate.format(LOT_DATE_FMT);
-        String appS = applicationStart.format(LOT_DT_FMT);
-        String appE = applicationEnd.format(LOT_DT_FMT);
-        String pickS = pickupStart.format(LOT_DT_FMT);
-        String pickE = pickupEnd.format(LOT_DT_FMT);
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        
+        String ann = announcementDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String appS = applicationStart.format(dtf);
+        String appE = applicationEnd.format(dtf);
+        String pickS = pickupStart.format(dtf);
+        String pickE = pickupEnd.format(dtf);
 
         LotteryManager.addRound(
                 title,
@@ -378,6 +415,36 @@ public class AdminLotteryFrame extends JFrame {
             g2.setColor(color);
             g2.setStroke(new BasicStroke(2));
             g2.drawRoundRect(x, y, w - 1, h - 1, radius, radius);
+        }
+    }
+    
+    private static class ModernScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI {
+        @Override
+        protected void configureScrollBarColors() {
+            this.thumbColor = new Color(200, 200, 200);
+            this.trackColor = new Color(245, 245, 245);
+        }
+        @Override
+        protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
+        @Override
+        protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
+        private JButton createZeroButton() {
+            JButton btn = new JButton();
+            btn.setPreferredSize(new Dimension(0, 0));
+            return btn;
+        }
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+            if (!c.isEnabled()) return;
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(thumbColor);
+            g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
+        }
+        @Override
+        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+            g.setColor(trackColor);
+            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
         }
     }
 }

@@ -1,22 +1,23 @@
-// 파일명: LotteryManager.java
 package admin;
 
 import beehub.DBUtil;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.format.DateTimeFormatter;
-import java.time.LocalDateTime;
 
 public class LotteryManager {
 
     // 한 번 응모할 때 기본 차감 꿀
     public static final int DEFAULT_COST_POINTS = 100;
 
-    // 🔹 MyPageFrame에서 부르는 2개짜리 버전
+    // 🔹 MyPageFrame에서 부르는 메소드
     public static boolean applyUsingPoints(int roundId, String hakbun) {
         return applyUsingPoints(roundId, hakbun, DEFAULT_COST_POINTS);
     }
@@ -25,13 +26,13 @@ public class LotteryManager {
 
     public static class LotteryRound {
         public int roundId;
-        public String name;               // 회차 이름 (화면용)
+        public String name;               // 회차 이름
         public String prizeName;          // 경품 이름
         public int winnerCount;           // 당첨 인원 수
-        public String announcementDate;   // 발표일 (yyyy-MM-dd)
-        public String applicationPeriod;  // 응모기간 텍스트
+        public String announcementDate;   // 발표일
+        public String applicationPeriod;  // 응모기간 (yyyy-MM-dd HH:mm:ss)
         public String pickupLocation;     // 수령 장소
-        public String pickupPeriod;       // 수령 기간 텍스트
+        public String pickupPeriod;       // 수령 기간
         public boolean isDrawn;           // 추첨 완료 여부
         public List<Applicant> applicants = new ArrayList<>();  // 응모자 목록
 
@@ -40,7 +41,7 @@ public class LotteryManager {
             a.name = name;
             a.hakbun = hakbun;
             a.count = count;
-            a.status = "대기";   // 기본 상태
+            a.status = "대기";
             applicants.add(a);
         }
     }
@@ -54,7 +55,6 @@ public class LotteryManager {
 
     // ===================== 유틸 =====================
 
-    // "1회차: SWU 봄맞이 이벤트" → "SWU 봄맞이 이벤트"
     private static String stripRoundPrefix(String rawName) {
         if (rawName == null) return "";
         int idx = rawName.indexOf(":");
@@ -62,14 +62,6 @@ public class LotteryManager {
             return rawName.substring(idx + 1).trim();
         }
         return rawName;
-    }
-
-    // "2025-04-01 ~ 2025-04-10" → ["2025-04-01", "2025-04-10"]
-    private static String[] splitPeriod(String period) {
-        if (period == null) return null;
-        String[] parts = period.split("~");
-        if (parts.length < 2) return null;
-        return new String[]{parts[0].trim(), parts[1].trim()};
     }
 
     // ===================== 회차 전체 조회 =====================
@@ -87,6 +79,9 @@ public class LotteryManager {
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
+            
+            // 날짜 포맷터 (시간 포함)
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
             while (rs.next()) {
                 LotteryRound r = new LotteryRound();
@@ -98,38 +93,39 @@ public class LotteryManager {
                 r.prizeName   = rs.getString("prize_name");
                 r.winnerCount = rs.getInt("winner_count");
 
-                Date annDate = rs.getDate("announcement_date");
+                // java.sql.Date 명시
+                java.sql.Date annDate = rs.getDate("announcement_date");
                 r.announcementDate = (annDate != null) ? annDate.toString() : "";
 
-                Timestamp appStart = rs.getTimestamp("application_start");
-                Timestamp appEnd   = rs.getTimestamp("application_end");
+                // java.sql.Timestamp 명시
+                java.sql.Timestamp appStart = rs.getTimestamp("application_start");
+                java.sql.Timestamp appEnd   = rs.getTimestamp("application_end");
+                
+                // 시간 정보를 포함해서 문자열로 저장
                 if (appStart != null && appEnd != null) {
                     r.applicationPeriod =
-                            appStart.toLocalDateTime().toLocalDate() + " ~ " +
-                            appEnd.toLocalDateTime().toLocalDate();
+                            appStart.toLocalDateTime().format(dtf) + " ~ " +
+                            appEnd.toLocalDateTime().format(dtf);
                 } else {
                     r.applicationPeriod = "-";
                 }
 
                 r.pickupLocation = rs.getString("pickup_location");
 
-                Timestamp pickStart = rs.getTimestamp("pickup_start");
-                Timestamp pickEnd   = rs.getTimestamp("pickup_end");
+                java.sql.Timestamp pickStart = rs.getTimestamp("pickup_start");
+                java.sql.Timestamp pickEnd   = rs.getTimestamp("pickup_end");
+                
                 if (pickStart != null && pickEnd != null) {
                     r.pickupPeriod =
-                            pickStart.toLocalDateTime().toLocalDate() + " ~ " +
-                            pickEnd.toLocalDateTime().toLocalDate();
+                            pickStart.toLocalDateTime().format(dtf) + " ~ " +
+                            pickEnd.toLocalDateTime().format(dtf);
                 } else {
                     r.pickupPeriod = "-";
                 }
 
-                // 추첨 완료 여부
                 r.isDrawn = rs.getInt("is_drawn") == 1;
-
-                // 응모자 목록 로딩
                 r.applicants = getApplicantsByRound(r.roundId);
 
-                // 아직 추첨 전이면 상태를 "대기"로 통일
                 if (!r.isDrawn) {
                     for (Applicant a : r.applicants) {
                         a.status = "대기";
@@ -148,7 +144,6 @@ public class LotteryManager {
 
     // ===================== 한 회차 응모자 조회 =====================
 
-    // round_id 기준으로 응모자 목록 로딩 (members 조인 + is_win 문자열 대응)
     public static List<Applicant> getApplicantsByRound(int roundId) {
         List<Applicant> list = new ArrayList<>();
 
@@ -171,22 +166,18 @@ public class LotteryManager {
                     a.name   = rs.getString("name");
                     a.count  = rs.getInt("entry_count");
 
-                    // 🔹 is_win 을 문자열로 읽어서 여러 케이스를 모두 처리
-                    String winRaw = rs.getString("is_win");  // 예: "W", "1", "0", null ...
+                    String winRaw = rs.getString("is_win");
 
                     if (winRaw == null) {
                         a.status = "미당첨";
                     } else {
                         winRaw = winRaw.trim();
-
                         if ("W".equalsIgnoreCase(winRaw) || "1".equals(winRaw)) {
                             a.status = "당첨";
                         } else {
-                            // 그 외 값은 전부 미당첨 취급 (예: "N", "0", "")
                             a.status = "미당첨";
                         }
                     }
-
                     list.add(a);
                 }
             }
@@ -200,48 +191,25 @@ public class LotteryManager {
 
     // ===================== 응모 (포인트 사용) =====================
 
-    /**
-     * 경품 응모 시:
-     * 1) members 에서 포인트 조회
-     * 2) 포인트 >= costPoints 인지 확인
-     * 3) 포인트 차감
-     * 4) lottery_entry 에 응모 내역 반영
-     *    - 이미 존재하면 entry_count += 1
-     *    - 없으면 새로 INSERT (entry_count = 1)
-     */
     public static boolean applyUsingPoints(int roundId, String hakbun, int costPoints) {
 
-        String selectPointSql =
-                "SELECT point FROM members WHERE hakbun = ?";
-        String updatePointSql =
-                "UPDATE members SET point = point - ? WHERE hakbun = ?";
-
-        // round+hakbun 응모 내역 확인
-        String selectEntrySql =
-                "SELECT entry_count FROM lottery_entry WHERE round_id = ? AND hakbun = ?";
-
-        String insertEntrySql =
-        	    "INSERT INTO lottery_entry (round_id, hakbun, entry_count, is_win) " +
-        	    "VALUES (?, ?, 1, 0)";
-
-        String updateEntrySql =
-        	    "UPDATE lottery_entry SET entry_count = entry_count + 1 " +
-        	    "WHERE round_id = ? AND hakbun = ?";
-
-        // (선택) 응모 기간 체크용
-        String selectRoundPeriodSql =
-                "SELECT application_start, application_end FROM lottery_round WHERE round_id = ?";
+        String selectPointSql = "SELECT point FROM members WHERE hakbun = ?";
+        String updatePointSql = "UPDATE members SET point = point - ? WHERE hakbun = ?";
+        String selectEntrySql = "SELECT entry_count FROM lottery_entry WHERE round_id = ? AND hakbun = ?";
+        String insertEntrySql = "INSERT INTO lottery_entry (round_id, hakbun, entry_count, is_win) VALUES (?, ?, 1, 0)";
+        String updateEntrySql = "UPDATE lottery_entry SET entry_count = entry_count + 1 WHERE round_id = ? AND hakbun = ?";
+        String selectRoundPeriodSql = "SELECT application_start, application_end FROM lottery_round WHERE round_id = ?";
 
         try (Connection conn = DBUtil.getConnection()) {
             conn.setAutoCommit(false);
 
-            // 0) (선택) 응모 기간 체크
+            // 기간 체크
             try (PreparedStatement ps = conn.prepareStatement(selectRoundPeriodSql)) {
                 ps.setInt(1, roundId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
-                        Timestamp tsStart = rs.getTimestamp("application_start");
-                        Timestamp tsEnd   = rs.getTimestamp("application_end");
+                        java.sql.Timestamp tsStart = rs.getTimestamp("application_start");
+                        java.sql.Timestamp tsEnd   = rs.getTimestamp("application_end");
 
                         if (tsStart != null && tsEnd != null) {
                             LocalDateTime now = LocalDateTime.now();
@@ -249,7 +217,7 @@ public class LotteryManager {
                             LocalDateTime end   = tsEnd.toLocalDateTime();
 
                             if (now.isBefore(start) || now.isAfter(end)) {
-                                System.out.println("[Lottery] 응모 기간이 아님. roundId=" + roundId);
+                                System.out.println("[Lottery] 응모 기간이 아님.");
                                 conn.rollback();
                                 return false;
                             }
@@ -259,13 +227,10 @@ public class LotteryManager {
             }
 
             int currentPoint;
-
-            // 1) 현재 포인트 조회
             try (PreparedStatement pstmt = conn.prepareStatement(selectPointSql)) {
                 pstmt.setString(1, hakbun);
                 try (ResultSet rs = pstmt.executeQuery()) {
                     if (!rs.next()) {
-                        System.out.println("[Lottery] members에서 학번을 찾지 못함: " + hakbun);
                         conn.rollback();
                         return false;
                     }
@@ -273,21 +238,17 @@ public class LotteryManager {
                 }
             }
 
-            // 2) 포인트 부족 체크
             if (currentPoint < costPoints) {
-                System.out.println("[Lottery] 포인트 부족: 현재 " + currentPoint + ", 필요 " + costPoints);
                 conn.rollback();
                 return false;
             }
 
-            // 3) 포인트 차감
             try (PreparedStatement pstmt = conn.prepareStatement(updatePointSql)) {
                 pstmt.setInt(1, costPoints);
                 pstmt.setString(2, hakbun);
                 pstmt.executeUpdate();
             }
 
-            // 4) 응모 내역 INSERT or UPDATE
             boolean exists;
             try (PreparedStatement pstmt = conn.prepareStatement(selectEntrySql)) {
                 pstmt.setInt(1, roundId);
@@ -298,14 +259,12 @@ public class LotteryManager {
             }
 
             if (exists) {
-                // 이미 응모 내역 있으면 응모 횟수 +1
                 try (PreparedStatement pstmt = conn.prepareStatement(updateEntrySql)) {
                     pstmt.setInt(1, roundId);
                     pstmt.setString(2, hakbun);
                     pstmt.executeUpdate();
                 }
             } else {
-                // 처음 응모하는 경우
                 try (PreparedStatement pstmt = conn.prepareStatement(insertEntrySql)) {
                     pstmt.setInt(1, roundId);
                     pstmt.setString(2, hakbun);
@@ -323,21 +282,7 @@ public class LotteryManager {
     }
 
     // ===================== 회차 추가 =====================
- // ===================== 회차 추가 =====================
 
-    /**
-     * 관리자가 새 추첨 회차를 등록할 때 사용.
-     *
-     * @param titleOnly    회차 제목
-     * @param prize        경품 이름
-     * @param count        당첨 인원 수
-     * @param annDateStr   발표일 (yyyy-MM-dd)
-     * @param appStartStr  응모 시작 일시 (yyyy-MM-dd HH:mm 또는 HH:mm:ss)
-     * @param appEndStr    응모 마감 일시
-     * @param loc          수령 장소
-     * @param pickStartStr 수령 시작 일시
-     * @param pickEndStr   수령 마감 일시
-     */
     public static boolean addRound(String titleOnly, String prize, int count,
                                    String annDateStr,
                                    String appStartStr, String appEndStr,
@@ -351,23 +296,18 @@ public class LotteryManager {
                 " pickup_location, pickup_start, pickup_end, is_drawn) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
 
-        Connection conn = null;
-        PreparedStatement pstmt = null;
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-        try {
-            conn = DBUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-
-            // 1) 제목/경품/인원
             pstmt.setString(1, titleOnly);
             pstmt.setString(2, prize);
             pstmt.setInt(3, count);
 
-            // 2) 발표일 (DATE)  → "yyyy-MM-dd"
-            LocalDate ann = LocalDate.parse(annDateStr);   // AdminLotteryFrame 에서 이미 yyyy-MM-dd 로 포맷해줌
-            pstmt.setDate(4, Date.valueOf(ann));
+            // 발표일
+            LocalDate ann = LocalDate.parse(annDateStr);
+            pstmt.setDate(4, java.sql.Date.valueOf(ann)); // java.sql.Date 명시
 
-            // 3) 응모/수령 기간 (DATETIME)  → "yyyy-MM-dd HH:mm" 또는 "yyyy-MM-dd HH:mm:ss"
+            // 기간 (시:분:초 포함)
             DateTimeFormatter dtFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm[:ss]");
 
             LocalDateTime appStart  = LocalDateTime.parse(appStartStr, dtFmt);
@@ -375,43 +315,25 @@ public class LotteryManager {
             LocalDateTime pickStart = LocalDateTime.parse(pickStartStr, dtFmt);
             LocalDateTime pickEnd   = LocalDateTime.parse(pickEndStr, dtFmt);
 
-            pstmt.setTimestamp(5, Timestamp.valueOf(appStart));
-            pstmt.setTimestamp(6, Timestamp.valueOf(appEnd));
-
-            // 4) 수령 장소
+            pstmt.setTimestamp(5, java.sql.Timestamp.valueOf(appStart));
+            pstmt.setTimestamp(6, java.sql.Timestamp.valueOf(appEnd));
             pstmt.setString(7, loc);
+            pstmt.setTimestamp(8, java.sql.Timestamp.valueOf(pickStart));
+            pstmt.setTimestamp(9, java.sql.Timestamp.valueOf(pickEnd));
 
-            pstmt.setTimestamp(8, Timestamp.valueOf(pickStart));
-            pstmt.setTimestamp(9, Timestamp.valueOf(pickEnd));
-
-            int rows = pstmt.executeUpdate();
-            return rows > 0;
+            return pstmt.executeUpdate() > 0;
 
         } catch (Exception e) {
             e.printStackTrace();
             return false;
-
-        } finally {
-            try { if (pstmt != null) pstmt.close(); } catch (Exception ignored) {}
-            try { if (conn != null) conn.close(); } catch (Exception ignored) {}
         }
     }
 
     // ===================== 추첨 결과 저장 =====================
 
-    /**
-     * AdminLotteryFrame.runLottery() 에서 메모리 상의 round.applicants에
-     * status("당첨"/"미당첨")를 다 채운 다음,
-     * 그 내용을 DB(lottery_round.is_drawn, lottery_entry.is_win)에 반영.
-     */
     public static boolean saveDrawResult(LotteryRound round) {
-
-        String sqlUpdateRound =
-                "UPDATE lottery_round SET is_drawn = 1 WHERE round_id = ?";
-
-        String sqlUpdateApplicant =
-                "UPDATE lottery_entry SET is_win = ? " +
-                "WHERE round_id = ? AND hakbun = ?";
+        String sqlUpdateRound = "UPDATE lottery_round SET is_drawn = 1 WHERE round_id = ?";
+        String sqlUpdateApplicant = "UPDATE lottery_entry SET is_win = ? WHERE round_id = ? AND hakbun = ?";
 
         Connection conn = null;
         PreparedStatement psRound = null;
@@ -421,23 +343,18 @@ public class LotteryManager {
             conn = DBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            // 1) 회차 상태 업데이트
             psRound = conn.prepareStatement(sqlUpdateRound);
             psRound.setInt(1, round.roundId);
             psRound.executeUpdate();
 
-            // 2) 응모자별 is_win 업데이트
             psApp = conn.prepareStatement(sqlUpdateApplicant);
-
             for (Applicant a : round.applicants) {
                 int isWinValue = "당첨".equals(a.status) ? 1 : 0;
-
                 psApp.setInt(1, isWinValue);
                 psApp.setInt(2, round.roundId);
                 psApp.setString(3, a.hakbun);
                 psApp.addBatch();
             }
-
             psApp.executeBatch();
 
             conn.commit();
@@ -449,7 +366,6 @@ public class LotteryManager {
                 try { conn.rollback(); } catch (Exception ignore) {}
             }
             return false;
-
         } finally {
             try { if (psApp != null) psApp.close(); } catch (Exception ignored) {}
             try { if (psRound != null) psRound.close(); } catch (Exception ignored) {}
