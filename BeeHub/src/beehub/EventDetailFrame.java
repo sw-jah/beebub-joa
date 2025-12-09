@@ -360,6 +360,7 @@ public class EventDetailFrame extends JFrame {
         JPasswordField[] codeFields = new JPasswordField[4];
         for (int i = 0; i < 4; i++) {
             JPasswordField field = new JPasswordField(1);
+            field.setEchoChar('*');
             field.setFont(uiFont.deriveFont(24f));
             field.setHorizontalAlignment(SwingConstants.CENTER);
             field.setPreferredSize(new Dimension(50, 50));

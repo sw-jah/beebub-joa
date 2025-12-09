@@ -264,7 +264,7 @@ public class LoginFrame extends JFrame {
 
             // 🛑 관리자는 일반 로그인 불가!
             if (!"USER".equalsIgnoreCase(role)) {
-                showCustomDialog("관리자 계정입니다.\n관리자 로그인 페이지를 이용해주세요.", false);
+                showCustomDialog("관리자 로그인 페이지를\n 이용해주세요.", false);
                 return;
             }
 
@@ -407,6 +407,14 @@ public class LoginFrame extends JFrame {
                 cardLayout.show(containerPanel, "login");
             }
         });
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH; // 양방향 확장
+        gbc.weightx = 1.0; // 가중치 1.0으로 가로 확장 보장
+        gbc.weighty = 1.0; // 세로 확장 보장
+        
+        textPanel.add(msgPane, gbc); // 수정된 gbc를 적용
+        
         panel.add(okBtn);
 
         dialog.setVisible(true);
@@ -495,6 +503,8 @@ public class LoginFrame extends JFrame {
 
     private JPasswordField createStyledPasswordField() {
         JPasswordField f = new JPasswordField();
+        // 이 한 줄을 추가하여 마스킹 문자를 '*'로 명시적으로 설정합니다.
+        f.setEchoChar('*'); // <--- 이 라인을 추가하세요
         f.setFont(uiFont.deriveFont(18f));
         f.setBackground(INPUT_BG);
         f.setBorder(BorderFactory.createCompoundBorder(new RoundedBorder(15, GRAY), BorderFactory.createEmptyBorder(5, 10, 5, 10)));

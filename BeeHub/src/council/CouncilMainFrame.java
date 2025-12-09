@@ -34,10 +34,18 @@ public class CouncilMainFrame extends JFrame {
 
     private JPanel ongoingPanel, endedPanel;
     private String councilId, councilName;
+    
+    private static final String TOTAL_COUNCIL_DISPLAY_NAME = "총학생회";
+    private static final String TOTAL_COUNCIL_NAME_TO_REPLACE = "전체학생";
+    
 
     public CouncilMainFrame(String id, String name) {
         this.councilId = id;
         this.councilName = name;
+        
+        if (this.councilName != null && this.councilName.trim().equals(TOTAL_COUNCIL_NAME_TO_REPLACE.trim())) {
+            this.councilName = TOTAL_COUNCIL_DISPLAY_NAME;
+        }
 
         setTitle("서울여대 꿀단지 - " + name + " 행사 관리");
         setSize(950, 700);

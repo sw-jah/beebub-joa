@@ -560,9 +560,9 @@ public class MyPageFrame extends JFrame {
         styleTable(table);
         table.setRowHeight(32);
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(350);
+        table.getColumnModel().getColumn(0).setPreferredWidth(300);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        table.getColumnModel().getColumn(2).setPreferredWidth(80);
+        table.getColumnModel().getColumn(2).setPreferredWidth(130);
 
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
@@ -596,6 +596,12 @@ public class MyPageFrame extends JFrame {
     }
 
  // ===================== 응모 팝업 (디자인 통일 수정) =====================
+ // BeeHub/src/beehub/MyPageFrame.java
+
+ // ... (다른 메소드들 생략)
+
+     // ===================== 응모 팝업 (디자인 통일 수정) =====================
+ // ===================== 응모 팝업 (디자인 통일 수정) =====================
     private void showApplyPopup(JLabel currentPointLabel) {
         int costPoints = 100;  // 응모 1회에 필요한 꿀
 
@@ -625,30 +631,31 @@ public class MyPageFrame extends JFrame {
         
         // 🔥 응모 기간 체크하여 '현재 응모 가능한' 회차만 필터링
         List<LotteryManager.LotteryRound> activeRounds = new ArrayList<>();
-        LocalDate today = LocalDate.now();
+        
+        DateTimeFormatter periodFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"); 
+        LocalDateTime now = LocalDateTime.now(); 
 
         for (LotteryManager.LotteryRound r : allRounds) {
-            // 이미 추첨된 회차는 제외 (선택 사항)
             if (r.isDrawn) continue;
 
             if (r.applicationPeriod != null && r.applicationPeriod.contains("~")) {
                 try {
                     String[] periodParts = r.applicationPeriod.split("~");
-                    LocalDate startDate = LocalDate.parse(periodParts[0].trim());
-                    LocalDate endDate   = LocalDate.parse(periodParts[1].trim());
-
-                    // 오늘 날짜가 시작일~종료일 사이에 있어야 함 (inclusive)
-                    if (!today.isBefore(startDate) && !today.isAfter(endDate)) {
+                    
+                    LocalDateTime startDateTime = LocalDateTime.parse(periodParts[0].trim(), periodFormatter);
+                    LocalDateTime endDateTime   = LocalDateTime.parse(periodParts[1].trim(), periodFormatter);
+                    
+                    // 현재 시각이 응모 시작 시각 이후이고, 응모 종료 시각 이전인지 확인 (inclusive)
+                    if (!now.isBefore(startDateTime) && !now.isAfter(endDateTime)) {
                         activeRounds.add(r);
                     }
                 } catch (Exception ex) {
-                    // 날짜 파싱 실패 시 제외
+                    System.err.println("경품 추첨 기간 파싱 오류: " + r.applicationPeriod + " - " + ex.getMessage());
                     continue;
                 }
             }
         }
 
-        // ✅ [수정] 기본 팝업 -> 커스텀 디자인 팝업으로 변경
         if (activeRounds.isEmpty()) {
             showCustomAlertPopup("알림", "현재 진행중인 추첨이 없습니다.");
             return;
@@ -661,61 +668,115 @@ public class MyPageFrame extends JFrame {
             options[i] = (i + 1) + ". " + r.name + " (" + r.prizeName + ")";
         }
 
-        // (선택 팝업은 JOptionPane 유지 - 커스텀이 복잡하여 리스트 선택은 기본 UI 사용)
-        String selected = (String) JOptionPane.showInputDialog(
-                this,
-                "응모할 회차를 선택하세요.\n(응모 1회당 " + costPoints + "꿀 차감)",
-                "경품 추첨 응모",
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                options,
-                options[0]
-        );
+        // -------------------------------------------------------------
+        // 👇 커스텀 응모 회차 선택 팝업 (새로 추가)
+        // -------------------------------------------------------------
+        JDialog dialog = new JDialog(this, "경품 추첨 응모", true);
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+        dialog.setSize(450, 400); 
+        dialog.setLocationRelativeTo(this);
 
-        if (selected == null) {
-            return;
-        }
+        JPanel panel = createPopupPanel();
+        panel.setLayout(null);
+        dialog.add(panel);
 
-        // 선택한 문자열로 activeRounds 내의 index 찾기
-        int idx = -1;
-        for (int i = 0; i < options.length; i++) {
-            if (options[i].equals(selected)) {
-                idx = i;
-                break;
-            }
-        }
-        if (idx < 0) return;
-
-        LotteryManager.LotteryRound chosen = activeRounds.get(idx);
-        int roundId = chosen.roundId;
-
-        // ✅ [수정] 확인 팝업도 커스텀 디자인으로 변경
-        String confirmMsg = selected + "\n\n정말로 " + costPoints + "꿀을 사용하여 1회 응모하시겠습니까?";
+        int y = 30;
         
-        showCustomConfirmPopup(confirmMsg, () -> {
-            // 🔹 DB에 응모 시도
-            boolean success = LotteryManager.applyUsingPoints(roundId, hakbun);
-            if (success) {
-                int newPoint = currentPoint - costPoints;
-                user.setPoint(newPoint);
-                currentPointLabel.setText(newPoint + "꿀");
+        // Title
+        JLabel title = new JLabel("경품 추첨 응모", SwingConstants.CENTER);
+        title.setFont(uiFont.deriveFont(Font.BOLD, 22f));
+        title.setForeground(BROWN);
+        title.setBounds(10, y, 430, 30);
+        panel.add(title);
+        y += 50;
 
-                showCustomAlertPopup("성공", "응모가 완료되었습니다!\n(현재 보유 꿀: " + newPoint + "꿀)");
+        // Current Points Info
+        JTextPane pointInfoLabel = createCenteredTextPane("나의 보유 꿀: " + currentPoint + "꿀\n(1회 응모 시 " + costPoints + "꿀 차감)");
+        pointInfoLabel.setBounds(20, y, 410, 50);
+        pointInfoLabel.setFont(uiFont.deriveFont(16f));
+        panel.add(pointInfoLabel);
+        y += 80;
 
-                // 🔄 myApplications 리스트에도 새 응모 기록 추가
-                if (myApplications == null) {
-                    myApplications = new ArrayList<>();
-                }
-                LocalDate appDate = LocalDate.now();
-                myApplications.add(new UserApplication(chosen, appDate.toString(), 1));
+        // Round Selection Label
+        JLabel roundSelectLabel = createLabel("응모할 회차 선택:");
+        roundSelectLabel.setBounds(30, y, 150, 30);
+        roundSelectLabel.setFont(uiFont.deriveFont(18f));
+        panel.add(roundSelectLabel);
+        
+        // Round Selection ComboBox
+        JComboBox<String> roundCombo = new JComboBox<>(options);
+        roundCombo.setFont(uiFont.deriveFont(16f));
+        roundCombo.setBounds(180, y, 240, 35);
+        panel.add(roundCombo);
+        y += 70;
 
-                // 패널 새로고침
-                refreshApplicationPanel();
-
-            } else {
-                showCustomAlertPopup("실패", "응모에 실패했습니다.\n포인트가 부족하거나,\n서버 오류가 발생했습니다.");
+        // Confirm Button (Apply)
+        JButton applyButton = createPopupBtn("응모하기");
+        applyButton.setBounds(90, y, 120, 45);
+        applyButton.addActionListener(e -> {
+            int selectedIndex = roundCombo.getSelectedIndex();
+            if (selectedIndex < 0) {
+                showCustomAlertPopup("알림", "응모할 회차를 선택해주세요.");
+                return;
             }
+            
+            dialog.dispose(); // 선택 팝업 닫기
+            
+            LotteryManager.LotteryRound chosen = activeRounds.get(selectedIndex);
+            int roundId = chosen.roundId;
+            String selectedOptionText = options[selectedIndex];
+
+            // 2단계: 최종 확인 팝업 (기존 커스텀 팝업 재사용)
+            String confirmMsg = selectedOptionText + "\n\n정말로 " + costPoints + "꿀을 사용하여 1회 응모하시겠습니까?";
+            
+            showCustomConfirmPopup(confirmMsg, () -> {
+                // 🔹 DB에 응모 시도
+                boolean success = LotteryManager.applyUsingPoints(roundId, hakbun);
+                if (success) {
+                    int newPoint = currentPoint - costPoints;
+                    user.setPoint(newPoint);
+                    currentPointLabel.setText(newPoint + "꿀");
+
+                    showCustomAlertPopup("성공", "응모가 완료되었습니다!\n(현재 보유 꿀: " + newPoint + "꿀)");
+
+                    // 🔄 myApplications 리스트에도 새 응모 기록 추가
+                    if (myApplications == null) {
+                        myApplications = new ArrayList<>();
+                    }
+                    LocalDate appDate = LocalDate.now();
+                    
+                    UserApplication existingApp = myApplications.stream()
+                            .filter(app -> app.round.roundId == roundId)
+                            .findFirst()
+                            .orElse(null);
+                    
+                    if (existingApp != null) {
+                        existingApp.entryCount++;
+                    } else {
+                        myApplications.add(new UserApplication(chosen, appDate.toString(), 1));
+                    }
+                    
+                    // 패널 새로고침
+                    refreshApplicationPanel();
+
+                } else {
+                    showCustomAlertPopup("실패", "응모에 실패했습니다.\n포인트가 부족하거나,\n서버 오류가 발생했습니다.");
+                }
+            });
         });
+        panel.add(applyButton);
+
+        // Cancel Button
+        JButton cancelButton = createPopupBtn("취소");
+        cancelButton.setBounds(240, y, 120, 45);
+        cancelButton.addActionListener(e -> dialog.dispose());
+        panel.add(cancelButton);
+        
+        dialog.setVisible(true);
+        // -------------------------------------------------------------
+        // 👆 커스텀 응모 회차 선택 팝업 종료
+        // -------------------------------------------------------------
     }
 
 
@@ -724,7 +785,7 @@ public class MyPageFrame extends JFrame {
         JDialog dialog = new JDialog(this, "당첨 확인", true);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
-        dialog.setSize(450, 450);
+        dialog.setSize(450, 400);
         dialog.setLocationRelativeTo(this);
 
         JPanel panel = createPopupPanel();
@@ -1586,6 +1647,7 @@ public class MyPageFrame extends JFrame {
         panel.add(label);
 
         JPasswordField field = new JPasswordField(15);
+        field.setEchoChar('*');
         field.setFont(uiFont.deriveFont(16f));
         field.setBounds(200, y, 200, 30);
         panel.add(field);
