@@ -323,8 +323,8 @@ public class ItemDetailFrame extends JFrame {
                     if (!majorAllowed) {
                         showSimplePopup(
                                 "대여 불가",
-                                "[" + targetRaw + "] 전공만 대여 가능합니다.\n" +
-                                "현재 전공: " + (userMajorRaw.isEmpty() ? "미등록" : userMajorRaw)
+                                "[" + targetRaw + "] 전공만\n 대여 가능합니다.\n"
+                                
                         );
                         return;
                     }

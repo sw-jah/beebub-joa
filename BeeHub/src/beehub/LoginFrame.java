@@ -193,7 +193,7 @@ public class LoginFrame extends JFrame {
         panel.add(beeIcon);
 
         JLabel subTitle = new JLabel("관리자 VER", SwingConstants.CENTER);
-        subTitle.setFont(uiFont.deriveFont(20f));
+        subTitle.setFont(uiFont.deriveFont(17f));
         subTitle.setForeground(BROWN);
         subTitle.setOpaque(true);
         subTitle.setBackground(Color.WHITE);

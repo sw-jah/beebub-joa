@@ -9,6 +9,8 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList; 
+import java.util.List;      
 
 import council.EventManager.EventData;
 import council.EventManager.FeeType;
@@ -17,7 +19,6 @@ public class CouncilEventAddDialog extends JDialog {
 
     private static final Color BG_WHITE = new Color(255, 255, 255);
     private static final Color BROWN    = new Color(139, 90, 43);
-    // [추가] 팝업 배경색 상수 (다른 프레임과 통일)
     private static final Color POPUP_BG = new Color(255, 250, 205); 
 
 
@@ -49,11 +50,13 @@ public class CouncilEventAddDialog extends JDialog {
     private JTextField applyStartField;    // yyyy-MM-dd HH:mm
     private JTextField applyEndField;      // yyyy-MM-dd HH:mm
     private JTextField totalCountField;
-    private JTextField targetDeptField;
     private JTextField secretCodeField;
     private JTextArea  descriptionArea;
     private JComboBox<String> typeCombo;   // SNACK / ACTIVITY
     private JComboBox<String> feeCombo;    // 회비 조건
+    
+    // [추가] 학과 체크박스 리스트
+    private List<JCheckBox> majorCheckBoxes = new ArrayList<>();
 
     private final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -145,11 +148,10 @@ public class CouncilEventAddDialog extends JDialog {
 
         titleField      = new JTextField();
         locationField   = new JTextField();
-        eventDateField  = new JTextField("2025-12-09 12:00");
-        applyStartField = new JTextField("2025-12-08 12:00");
-        applyEndField   = new JTextField("2025-12-08 15:00");
+        eventDateField  = new JTextField();
+        applyStartField = new JTextField();
+        applyEndField   = new JTextField();
         totalCountField = new JTextField();
-        targetDeptField = new JTextField();
         secretCodeField = new JTextField();
 
         descriptionArea = new JTextArea(5, 20);
@@ -173,7 +175,23 @@ public class CouncilEventAddDialog extends JDialog {
         addRow.accept("신청 시작",        applyStartField);
         addRow.accept("신청 종료",        applyEndField);
         addRow.accept("정원",             totalCountField);
-        addRow.accept("대상 학과 / 전체", targetDeptField);
+        
+        // [수정] 대상 학과: 체크박스 스크롤 패널 추가
+        JScrollPane majorScrollPane = createMajorSelectionPanel();
+        
+        gc.gridx = 0;
+        gc.weightx = 0;
+        JLabel majorLabel = new JLabel("대상 학과 선택");
+        majorLabel.setFont(uiFont.deriveFont(Font.BOLD, 13f));
+        majorLabel.setForeground(BROWN);
+        form.add(majorLabel, gc);
+
+        gc.gridx = 1;
+        gc.weightx = 1;
+        form.add(majorScrollPane, gc); // <--- 여기가 수정되어 JScrollPane을 올바르게 추가함
+        gc.gridy++;
+        // [수정 끝]
+        
         addRow.accept("비밀코드 (출석 등)", secretCodeField);
         addRow.accept("행사 타입",        typeCombo);
         addRow.accept("회비 조건",        feeCombo);
@@ -211,6 +229,62 @@ public class CouncilEventAddDialog extends JDialog {
         btnPanel.add(cancelBtn);
         content.add(btnPanel, BorderLayout.SOUTH);
     }
+    
+    // [추가] 학과 선택 패널 생성 메소드
+    private JScrollPane createMajorSelectionPanel() {
+        JPanel majorPanel = new JPanel();
+        majorPanel.setLayout(new BoxLayout(majorPanel, BoxLayout.Y_AXIS));
+        majorPanel.setBackground(BG_WHITE);
+        majorPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        
+        // "ALL" checkbox replacement
+        JCheckBox allCheck = new JCheckBox("ALL (전체 학과)");
+        allCheck.setFont(uiFont.deriveFont(Font.BOLD, 13f));
+        allCheck.setBackground(BG_WHITE);
+        allCheck.setForeground(BROWN);
+        allCheck.addActionListener(e -> {
+            boolean sel = allCheck.isSelected();
+            for (JCheckBox cb : majorCheckBoxes) cb.setSelected(sel);
+        });
+        majorPanel.add(allCheck);
+        majorPanel.add(Box.createVerticalStrut(5));
+
+        // AdminItemAddDialog와 동일한 학과 리스트 추가
+        addCollegeGroup(majorPanel, "인문대학",
+                new String[]{"글로벌ICT인문융합학부", "국어국문학과", "영어영문학과", "중어중문학과", "일어일문학과", "사학과", "기독교학과"});
+        addCollegeGroup(majorPanel, "사회과학대학",
+                new String[]{"경제학과", "문헌정보학과", "사회복지학과", "아동학과", "행정학과", "언론영상학부", "심리.인지과학학부", "스포츠운동과학과"});
+        addCollegeGroup(majorPanel, "과학기술융합대학",
+                new String[]{"수학과", "화학과", "생명환경공학과", "바이오헬스융합학과", "원예생명조경학과", "식품공학과", "식품영양학과"});
+        addCollegeGroup(majorPanel, "미래산업융합대학",
+                new String[]{"경영학과", "패션산업학과", "디지털미디어학과", "지능정보보호학부", "소프트웨어융합학과", "데이터사이언스학과", "산업디자인학과"});
+
+        JScrollPane scrollPane = new JScrollPane(majorPanel);
+        scrollPane.setPreferredSize(new Dimension(300, 150));
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+
+        return scrollPane;
+    }
+    
+    // [추가] 학과 그룹 추가 헬퍼 메소드
+    private void addCollegeGroup(JPanel p, String collegeName, String[] depts) {
+        JLabel cLabel = new JLabel("■ " + collegeName);
+        cLabel.setFont(uiFont.deriveFont(Font.BOLD, 13f));
+        cLabel.setForeground(BROWN);
+        cLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 2, 0));
+        p.add(cLabel);
+
+        for (String dept : depts) {
+            JCheckBox cb = new JCheckBox(dept);
+            cb.setFont(uiFont.deriveFont(12f));
+            cb.setBackground(BG_WHITE);
+            cb.setForeground(BROWN);
+            cb.setBorder(BorderFactory.createEmptyBorder(0, 20, 2, 0));
+            majorCheckBoxes.add(cb);
+            p.add(cb);
+        }
+    }
+
 
     /** 기존 EventData 내용 → 폼에 채우기 (수정 모드일 때) */
     private void fillFormFromEventData() {
@@ -222,9 +296,27 @@ public class CouncilEventAddDialog extends JDialog {
         if (eventData.applyStart != null)  applyStartField.setText(eventData.applyStart.format(FMT));
         if (eventData.applyEnd != null)    applyEndField.setText(eventData.applyEnd.format(FMT));
         if (eventData.totalCount > 0)      totalCountField.setText(String.valueOf(eventData.totalCount));
-        if (eventData.targetDept != null)  targetDeptField.setText(eventData.targetDept);
         if (eventData.secretCode != null)  secretCodeField.setText(eventData.secretCode);
         if (eventData.description != null) descriptionArea.setText(eventData.description);
+        
+        // [수정] 대상 학과 체크박스 채우기
+        if (eventData.targetDept != null) {
+            String targetDept = eventData.targetDept.trim();
+            if ("ALL".equalsIgnoreCase(targetDept) || "전체 학과".equalsIgnoreCase(targetDept)) {
+                // 'ALL' 또는 '전체 학과'가 저장되어 있으면 모두 선택
+                for (JCheckBox cb : majorCheckBoxes) {
+                    cb.setSelected(true);
+                }
+            } else {
+                // 콤마로 구분된 목록을 포함하는지 확인
+                for (JCheckBox cb : majorCheckBoxes) {
+                    if (targetDept.contains(cb.getText())) {
+                        cb.setSelected(true);
+                    }
+                }
+            }
+        }
+        // [수정 끝]
 
         String type = (eventData.eventType != null) ? eventData.eventType.toUpperCase() : "ACTIVITY";
         if (type.startsWith("SNACK")) typeCombo.setSelectedIndex(1);
@@ -258,15 +350,15 @@ public class CouncilEventAddDialog extends JDialog {
                 return;
             }
 
-            // 날짜 파싱 및 오류 체크 (parseDateTime 수정에 따라 로직 변경)
+            // 날짜 파싱 및 오류 체크
             LocalDateTime eventDate  = parseDateTime(eventDateField.getText().trim(),  "행사 일시");
-            if (eventDate == null) return; // 파싱 실패 시 showCustomMsgPopup이 이미 호출됨.
+            if (eventDate == null) return; 
 
             LocalDateTime applyStart = parseDateTime(applyStartField.getText().trim(), "신청 시작");
-            if (applyStart == null) return; // 파싱 실패 시 showCustomMsgPopup이 이미 호출됨.
+            if (applyStart == null) return; 
 
             LocalDateTime applyEnd   = parseDateTime(applyEndField.getText().trim(),   "신청 종료");
-            if (applyEnd == null) return; // 파싱 실패 시 showCustomMsgPopup이 이미 호출됨.
+            if (applyEnd == null) return; 
 
 
             // ================================================================
@@ -310,11 +402,34 @@ public class CouncilEventAddDialog extends JDialog {
                 return;
             }
 
-            int totalCount = 0;
+            // [추가] 대상 학과 문자열 구성 (ALL 처리 포함)
+            StringBuilder sb = new StringBuilder();
+            int selectedCount = 0;
+            int totalCount = majorCheckBoxes.size();
+            for (JCheckBox cb : majorCheckBoxes) {
+                if (cb.isSelected()) {
+                    if (sb.length() > 0) sb.append(", ");
+                    sb.append(cb.getText());
+                    selectedCount++;
+                }
+            }
+            
+            String targetDept;
+            if (selectedCount == totalCount && totalCount > 0) {
+                targetDept = "ALL"; // 요청에 따라 'ALL'로 저장
+            } else if (selectedCount == 0) {
+                targetDept = "대상 없음"; 
+            } else {
+                targetDept = sb.toString();
+            }
+            // [추가 끝]
+
+
+            int totalCountFieldInt = 0;
             String totalStr = totalCountField.getText().trim();
             if (!totalStr.isEmpty()) {
-                totalCount = Integer.parseInt(totalStr);
-                if (totalCount < 0) totalCount = 0;
+                totalCountFieldInt = Integer.parseInt(totalStr);
+                if (totalCountFieldInt < 0) totalCountFieldInt = 0;
             }
 
             // ✅ eventData(기존 객체)에 덮어쓰기
@@ -324,8 +439,8 @@ public class CouncilEventAddDialog extends JDialog {
             eventData.startDateTime = eventDate; // 호환 필드
             eventData.applyStart   = applyStart;
             eventData.applyEnd     = applyEnd;
-            eventData.totalCount   = totalCount;
-            eventData.targetDept   = targetDeptField.getText().trim();
+            eventData.totalCount   = totalCountFieldInt;
+            eventData.targetDept   = targetDept; // [수정] 체크박스에서 가져온 값으로 설정
             eventData.secretCode   = secretCodeField.getText().trim();
             eventData.description  = descriptionArea.getText();
 
@@ -371,7 +486,7 @@ public class CouncilEventAddDialog extends JDialog {
 
     // [수정됨] parseDateTime: 예외 발생 시 Custom Popup을 띄우고 null을 반환합니다.
     private LocalDateTime parseDateTime(String text, String label) {
-        // [수정] 빈 문자열은 null 반환 (빈 문자열이 허용된다고 가정)
+        // 빈 문자열은 null 반환
         if (text == null || text.isEmpty()) return null;
         try {
             return LocalDateTime.parse(text, FMT);
@@ -380,7 +495,6 @@ public class CouncilEventAddDialog extends JDialog {
                     "형식 오류",
                     label + " 형식이 올바르지 않습니다.\n예: 2025-12-08 12:00"
             );
-            // 🔥 예외를 던지지 않고 null을 반환하여 onSave 메소드의 실행 흐름을 통제합니다.
             return null; 
         }
     }

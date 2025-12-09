@@ -239,7 +239,7 @@ public class EventDetailFrame extends JFrame {
 
                     if (!target.equals(myMajor)) {
                         showSimplePopup("참여 불가",
-                                "본 행사는 '" + target + "' 학생만 참여 가능합니다.");
+                                "본 행사는 '" + target + "' 학생만\n 참여 가능합니다.");
                         return;
                     }
                 }
